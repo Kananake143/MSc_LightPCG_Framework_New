@@ -101,7 +101,7 @@ namespace LightPCG.Systems
                 else if (tag == "Receiver")
                 {
                     IsHittingReceiver = true;
-                    hit.collider.GetComponentInParent<ReceiverDetector>()?.OnLaserHit();
+                    hit.collider.GetComponent<ReceiverDetector>()?.OnLaserHit();
                     break;
                 }
                 else
