@@ -751,7 +751,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6dda6ad5de5e7be45b99d5f8f79e549a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  totalRuns: 10
+  totalRuns: 50
   runOnStart: 1
   codeVersion: MID-M v1
   startSteps: 3
