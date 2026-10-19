@@ -546,6 +546,17 @@ MonoBehaviour:
   LastMirrorCount: 0
   LastRefractorCount: 0
   LastRuleTransitions: 0
+  kRel: 0
+  seed: 20261016
+  maxGenerationAttempts: 50
+  requireReachableCertificate: 1
+  LastEmitter: {x: 0, y: 0}
+  LastEmitDir: {x: 0, y: 0}
+  LastReceiver: {x: 0, y: 0}
+  LastLevelValid: 0
+  LastRejectReason: 
+  LastGenerationAttempts: 0
+  LastSeed: 0
 --- !u!4 &1581782428
 Transform:
   m_ObjectHideFlags: 0
@@ -575,16 +586,21 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   totalRuns: 1000
   runOnStart: 1
+  codeVersion: MID-M v1
   startSteps: 3
   maxSteps: 9
-  startDecoys: 0
-  decoyEveryN: 3
-  useStratifiedSampling: 1
   decoyLevels: 0000000001000000020000000300000004000000
+  kRelLevels: 00000000010000000200000003000000
+  designStride: 1
+  baseSeed: 20261016
+  certificateReplayMode: 0
   gridVisualizer: {fileID: 0}
-  solverAgent: {fileID: 0}
+  solverBot: {fileID: 0}
+  outputFolder: PCG_Output
   csvFileName: PCG_Results.csv
+  exportLayouts: 1
   exitDoorWait: 2
+  targetFrameRate: 60
 --- !u!1 &1901820493
 GameObject:
   m_ObjectHideFlags: 0
@@ -597,9 +613,9 @@ GameObject:
   - component: {fileID: 1901820496}
   - component: {fileID: 1901820495}
   - component: {fileID: 1901820494}
-  - component: {fileID: 1901820498}
   - component: {fileID: 1901820499}
   - component: {fileID: 1901820500}
+  - component: {fileID: 1901820501}
   m_Layer: 7
   m_Name: AI_Agent
   m_TagString: Untagged
@@ -698,36 +714,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1901820498
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1901820493}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 070edb81b97d6834cb8529c786130935, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  gridVisualizer: {fileID: 1581782427}
-  moveSpeed: 4
-  rotationSpeed: 15
-  physicsWait: 0.15
-  stepDelay: 0.25
-  maxSearchNodes: 100000
-  maxPlanDepth: 12
-  WasSolved: 0
-  SolveIterations: 0
-  SolveTimeMs: 0
-  SearchTimeMs: 0
-  ExecutionTimeMs: 0
-  TotalPlacements: 0
-  InPlaceRotations: 0
-  Relocations: 0
-  SolvePhase: None
-  SweepIterations: 0
-  SweepRelocations: 0
 --- !u!143 &1901820499
 CharacterController:
   m_ObjectHideFlags: 0
@@ -765,18 +751,73 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6dda6ad5de5e7be45b99d5f8f79e549a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  totalRuns: 1000
+  totalRuns: 10
   runOnStart: 1
+  codeVersion: MID-M v1
   startSteps: 3
   maxSteps: 9
-  startDecoys: 0
-  decoyEveryN: 3
-  useStratifiedSampling: 1
   decoyLevels: 0000000001000000020000000300000004000000
+  kRelLevels: 00000000010000000200000003000000
+  designStride: 1
+  baseSeed: 20261016
+  certificateReplayMode: 0
   gridVisualizer: {fileID: 0}
-  solverAgent: {fileID: 0}
+  solverBot: {fileID: 0}
+  outputFolder: PCG_Output
   csvFileName: PCG_Results.csv
+  exportLayouts: 1
   exitDoorWait: 2
+  targetFrameRate: 60
+--- !u!114 &1901820501
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1901820493}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 017c21c1d3463cd4e9ddd0222feda9ee, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  gridVisualizer: {fileID: 0}
+  maxExpandedNodes: 100000
+  maxPlanDepth: 12
+  searchTimeLimitMs: 8000
+  heuristicWeight: 2
+  sourcesPerType: 2
+  parkingCandidates: 3
+  searchOnWorkerThread: 1
+  maxReplans: 1
+  moveSpeed: 6
+  turnDuration: 0.15
+  physicsWait: 0.15
+  verifyTimeout: 1
+  doorTimeout: 1.5
+  exitThroughDoor: 1
+  WasSolved: 0
+  SearchTimedOut: 0
+  PlanFailedPhysically: 0
+  LaserHit: 0
+  DoorOpened: 0
+  SolveIterations: 0
+  SolveTimeMs: 0
+  SearchTimeMs: 0
+  ExecutionTimeMs: 0
+  TotalPlacements: 0
+  InPlaceRotations: 0
+  Relocations: 0
+  SearchPhase: None
+  FinalPhase: None
+  WalkTeleports: 0
+  SweepIterations: 0
+  SweepRelocations: 0
+  SearchGenerated: 0
+  PlanLength: 0
+  WalkCells: 0
+  Replans: 0
+  MaxDepthReached: 0
+  FailReason: 
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

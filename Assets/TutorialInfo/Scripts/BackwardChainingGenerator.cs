@@ -1,9 +1,24 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace LightPCG.Core
 {
     /// <summary>
+    /// v17 — MID-M support
+    ///
+    /// Changes from v16:
+    ///   - OrderedSolutionBends: main-chain bends in EMITTER -> RECEIVER order
+    ///     (the chain is built receiver-first, so the list is reversed at the end)
+    ///   - DecoyPlacements: cell and type of every decoy actually placed
+    ///   - DecoyCount now counts decoys actually placed (v16 stored the requested number)
+    ///   - MainChainComplete / ChainFailureReason: false when a bend cell was occupied
+    ///     (v16 skipped the object but still turned the path), when a segment had
+    ///     length 0, or when the emitter fell back to a cell off the path
+    ///   - EmitterCell / EmitterBeamDir: where the emitter is and which way the beam
+    ///     must leave it to retrace the chain
+    ///   Generation rules themselves are unchanged from v16.
+    ///
     /// v16 —improve Cl
     ///
     /// Changes from v15:
@@ -45,6 +60,24 @@ namespace LightPCG.Core
         /// </summary>
         public int RuleTransitions { get; private set; }
 
+        // ── MID-M data (read by GridVisualizer -> IntendedSolution / PuzzleScrambler) ──
+        /// <summary>Main-chain bends, emitter -> receiver order.</summary>
+        public List<(Vector2Int cell, TileType type)> OrderedSolutionBends { get; private set; }
+            = new List<(Vector2Int cell, TileType type)>();
+        /// <summary>Every decoy actually placed.</summary>
+        public List<(Vector2Int cell, TileType type)> DecoyPlacements { get; private set; }
+            = new List<(Vector2Int cell, TileType type)>();
+        /// <summary>True when every bend of the main chain received an object and the emitter sits at the end of the chain.</summary>
+        public bool MainChainComplete { get; private set; }
+        public string ChainFailureReason { get; private set; }
+        public Vector2Int EmitterCell { get; private set; } = -Vector2Int.one;
+        /// <summary>Direction the beam must leave the emitter (opposite of the build direction).</summary>
+        public Vector2Int EmitterBeamDir { get; private set; }
+
+        // build-time state of the chain currently being built
+        private bool buildingMainChain;
+        private readonly List<(Vector2Int cell, TileType type)> chainBends = new List<(Vector2Int, TileType)>();
+
         // ── Constructor ───────────────────────────────────────────────
         public BackwardChainingGenerator(GridModel g)
         { grid = g; W = g.Width; H = g.Height; }
@@ -63,6 +96,12 @@ namespace LightPCG.Core
             MirrorCount = 0;
             RefractorCount = 0;
             RuleTransitions = 0;
+            OrderedSolutionBends.Clear();
+            DecoyPlacements.Clear();
+            MainChainComplete = true;
+            ChainFailureReason = null;
+            EmitterCell = -Vector2Int.one;
+            EmitterBeamDir = Vector2Int.zero;
 
             // 1. Outer walls
             for (int x = 0; x < W; x++)
@@ -78,8 +117,11 @@ namespace LightPCG.Core
             solutionCells.Add(recv);
             solutionCells.Add(door);
 
-            // 3. Main chain
+            // 3. Main chain (receiver -> emitter), then expose it emitter -> receiver
+            buildingMainChain = true;
             BuildChain(recv, Mathf.Max(steps, 2));
+            buildingMainChain = false;
+            OrderedSolutionBends = Enumerable.Reverse(chainBends).ToList();
 
             // 4. Extra emitters
             for (int e = 1; e < emitterCount; e++)
@@ -91,7 +133,9 @@ namespace LightPCG.Core
 
             // 5. Decoys
             PlaceDecoys(decoys);
-            DecoyCount = decoys;
+            DecoyCount = DecoyPlacements.Count;   // actual number placed (may be < requested)
+            if (DecoyCount < decoys)
+                Debug.LogWarning($"[PCG] only {DecoyCount}/{decoys} decoys could be placed.");
 
             // 6. Pillar obstacles
             PlacePillars(steps);
@@ -113,18 +157,22 @@ namespace LightPCG.Core
 
             // Track the previous bend type to count transitions (Cₕ)
             TileType previousBend = TileType.Empty; // sentinel = no previous bend yet
+            if (buildingMainChain) chainBends.Clear();
 
             for (int i = 0; i < steps; i++)
             {
                 // Walk along current direction
                 int stepLen = Random.Range(3, 7);
+                int walked = 0;
                 for (int s = 0; s < stepLen; s++)
                 {
                     int nx = cx + dir.x, ny = cy + dir.y;
                     if (nx <= 1 || nx >= W - 2 || ny <= 1 || ny >= H - 2) break;
                     cx = nx; cy = ny;
+                    walked++;
                     solutionCells.Add(new Vector2Int(cx, cy));
                 }
+                if (walked == 0 && i < steps - 1) FailChain($"segment {i} has length 0 (inner margin)");
 
                 if (i < steps - 1)
                 {
@@ -150,6 +198,12 @@ namespace LightPCG.Core
                             RuleTransitions++;
 
                         previousBend = bend;
+                        if (buildingMainChain) chainBends.Add((new Vector2Int(cx, cy), bend));
+                    }
+                    else
+                    {
+                        // v16 behaviour kept (path still turns), but the chain is now flagged
+                        FailChain($"bend {i} cell {new Vector2Int(cx, cy)} already occupied by {grid.GetTile(cx, cy)}");
                     }
 
                     dir = Rotate90(dir);
@@ -252,7 +306,9 @@ namespace LightPCG.Core
                 if (IsCornerZone(x, y)) continue;
                 if (solutionCells.Contains(new Vector2Int(x, y))) continue;
                 if (IsOnSolutionPath(x, y, 1)) continue;
-                grid.SetTile(x, y, (Random.value > 0.5f) ? TileType.Mirror : TileType.Refractor);
+                var t = (Random.value > 0.5f) ? TileType.Mirror : TileType.Refractor;
+                grid.SetTile(x, y, t);
+                DecoyPlacements.Add((new Vector2Int(x, y), t));
                 count--;
             }
         }
@@ -260,6 +316,23 @@ namespace LightPCG.Core
         // ════════════════════════════════════════════════════════════
         // EMITTER PLACEMENT
         // ════════════════════════════════════════════════════════════
+        void FailChain(string reason)
+        {
+            if (!buildingMainChain) return;
+            if (MainChainComplete) ChainFailureReason = reason;
+            MainChainComplete = false;
+        }
+
+        void SetEmitter(Vector2Int c, Vector2Int buildDir, bool onPath)
+        {
+            grid.SetTile(c.x, c.y, TileType.Emitter);
+            solutionCells.Add(c);
+            if (!buildingMainChain) return;
+            EmitterCell = c;
+            EmitterBeamDir = -buildDir;
+            if (!onPath) FailChain("emitter placed at a fallback cell off the chain");
+        }
+
         void PlaceEmitterAgainstWall(int cx, int cy, Vector2Int dir)
         {
             for (int s = 0; s < Mathf.Max(W, H); s++)
@@ -272,18 +345,12 @@ namespace LightPCG.Core
                 if (boundary)
                 {
                     if (grid.GetTile(cx, cy) == TileType.Empty && !IsCornerZone(cx, cy))
-                    {
-                        grid.SetTile(cx, cy, TileType.Emitter);
-                        solutionCells.Add(new Vector2Int(cx, cy));
-                    }
+                        SetEmitter(new Vector2Int(cx, cy), dir, true);
                     else
                     {
                         var fb = FindSafeInnerEdgeEmpty();
-                        if (fb != -Vector2Int.one)
-                        {
-                            grid.SetTile(fb.x, fb.y, TileType.Emitter);
-                            solutionCells.Add(fb);
-                        }
+                        if (fb != -Vector2Int.one) SetEmitter(fb, dir, false);
+                        else FailChain("no cell available for the emitter");
                     }
                     return;
                 }
@@ -296,19 +363,15 @@ namespace LightPCG.Core
                 else
                 {
                     if (grid.GetTile(cx, cy) == TileType.Empty && !IsCornerZone(cx, cy))
-                    {
-                        grid.SetTile(cx, cy, TileType.Emitter);
-                        solutionCells.Add(new Vector2Int(cx, cy));
-                    }
+                        SetEmitter(new Vector2Int(cx, cy), dir, true);
+                    else FailChain("emitter cell blocked");
                     return;
                 }
             }
 
             if (grid.GetTile(cx, cy) == TileType.Empty && !IsCornerZone(cx, cy))
-            {
-                grid.SetTile(cx, cy, TileType.Emitter);
-                solutionCells.Add(new Vector2Int(cx, cy));
-            }
+                SetEmitter(new Vector2Int(cx, cy), dir, true);
+            else FailChain("emitter cell blocked");
         }
 
         // ════════════════════════════════════════════════════════════
@@ -418,4 +481,4 @@ namespace LightPCG.Core
             ? new Vector2Int(-d.y, d.x)
             : new Vector2Int(d.y, -d.x);
     }
-}
+}

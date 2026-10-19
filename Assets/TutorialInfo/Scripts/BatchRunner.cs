@@ -1,384 +1,227 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text;
+using LightPCG.Core;
 using LightPCG.Systems;
 
 namespace LightPCG.Research
 {
     /// <summary>
-    /// Runs N automated solve attempts and exports results to CSV.
-    /// Set totalRuns in the Inspector before pressing Play.
-    /// CSV is saved to: [Project]/Assets/PCG_Results.csv
+    /// Runs N automated attempts and exports one CSV row + one layout JSON per level.
     ///
-    /// MID formula (Section 3.3 of paper):
-    ///   MID = α·Cl + β·Ch + γ·Ci
+    /// MID-M (Chapter 3):
+    ///   MID_static = (Cl~ + Ch + Ci) / 3,         Cl~ = TotalObjects / Nobj_max
+    ///   MID_mob    = (Mr + Mo + Mi + Md) / 4      (computed from the initial state, before solving)
+    ///   MID-M      = 0.5 * MID_static + 0.5 * MID_mob
+    /// Weights are fixed in MidCalculator and are never tuned on the evaluation data.
+    /// The legacy formula (0.5/0.3/0.2, Cl = TotalObjects/256) is also written for sensitivity analysis.
     ///
-    ///   Cl  = Component Density    = TotalObjects / (GridWidth × GridHeight)
-    ///                                 (TotalObjects = SolutionObjects + Decoys)
-    ///                                 ตาม Section 3.4.3 ของรายงาน: Cl = N_totalObjects / 256
-    ///   Ch  = Rule Heterogeneity   = RuleTransitions / (SolutionObjects − 1)
-    ///   Ci  = Interaction Density  = RefractorCount  /  SolutionObjects
-    ///
-    ///   α = 0.5  (path length — most influential)
-    ///   β = 0.3  (rule variety)
-    ///   γ = 0.2  (refractor complexity)
-    ///
-    /// SolvePhase column (RQ2 difficulty signal):
-    ///   Trivial / 1A / 1B / Sweep-S1 / Sweep-S2 / Sweep-S3 / Sweep(failed) / None,
-    ///   ordered roughly from least to most solver effort. SweepIterations and
-    ///   SweepRelocations give the effort actually spent once the solver fell
-    ///   back to CorrectionSweep, so harder (higher-MID) puzzles can be checked
-    ///   against deeper phases / higher effort, not just a pass/fail flag.
+    /// Modes:
+    ///   certificateReplayMode = true  -> pilot: replay each certificate physically (logic–physics agreement)
+    ///   certificateReplayMode = false -> evaluation: the solver bot (PuzzleBot) plans and acts on its own
     /// </summary>
     public class BatchRunner : MonoBehaviour
     {
-        // ── MID weighting constants (paper Section 3.3) ───────────────
-        private const float ALPHA = 0.5f;   // weight for Cl (Component Density)
-        private const float BETA = 0.3f;   // weight for Ch (Rule Heterogeneity)
-        private const float GAMMA = 0.2f;   // weight for Ci (Interaction Density)
-
         [Header("Experiment")]
-        public int totalRuns = 50;        // change to 1000 for full experiment
+        public int totalRuns = 50;
         public bool runOnStart = true;
+        [Tooltip("Free-text tag written to every row, e.g. git commit or date.")]
+        public string codeVersion = "MID-M v1";
 
-        [Header("Progressive Difficulty (legacy adaptive mode)")]
+        [Header("Stratified design: Steps x Decoys x kRel")]
         public int startSteps = 3;
         public int maxSteps = 9;
-        public int startDecoys = 0;
-        public int decoyEveryN = 3;
-
-        [Header("Stratified Sampling")]
-        [Tooltip("If true, (Steps × Decoys) combinations are cycled through evenly across " +
-                 "totalRuns instead of ramping difficulty up adaptively. This is required for " +
-                 "the Low/Medium/High MID comparison in Section 3.4.2 — the adaptive mode " +
-                 "reaches max difficulty within ~10 runs and stays there, so 1000 adaptive " +
-                 "runs end up giving almost no coverage of the lower/medium tiers.")]
-        public bool useStratifiedSampling = true;
-        [Tooltip("Decoy counts to cycle through when stratified sampling is enabled.")]
         public int[] decoyLevels = { 0, 1, 2, 3, 4 };
+        public int[] kRelLevels = { 0, 1, 2, 3 };
+        [Tooltip("Run i uses design cell (i * designStride) mod cells. 1 = plain round-robin (evaluation). " +
+                 "Use a stride coprime with the cell count (e.g. 3 for 140 cells) so a short pilot covers every kRel level.")]
+        public int designStride = 1;
+
+        [Header("MID-M experiment")]
+        public int baseSeed = 20261016;
+        [Tooltip("Pilot: replay the solution certificate instead of running the solver.")]
+        public bool certificateReplayMode = false;
 
         [Header("References")]
         public GridVisualizer gridVisualizer;
-        public AISolverAgent solverAgent;
+        [Tooltip("Solver bot. Replaces AISolverAgent (remove or disable that component).")]
+        public PuzzleBot solverBot;
 
-        [Header("CSV Export")]
+        [Header("Output (written to <project>/PCG_Output, outside Assets)")]
+        public string outputFolder = "PCG_Output";
         public string csvFileName = "PCG_Results.csv";
+        public bool exportLayouts = true;
 
         [Header("Timing")]
-        [Tooltip("Seconds to wait after OnSolveComplete before generating the next level.")]
         public float exitDoorWait = 5.0f;
+        public int targetFrameRate = 60;
 
-        // ── Private state ─────────────────────────────────────────────
-        private List<RunRecord> records = new List<RunRecord>();
-        private int currentRun = 0;
-        private int currentSteps;
-        private int currentDecoys;
-        private int solvedInSession = 0;
+        private readonly List<string> rows = new List<string>();
+        private int validRuns, solvedRuns;
+        private string OutDir => Path.GetFullPath(Path.Combine(Application.dataPath, "..", outputFolder));
 
-        // ── Run record — all columns written to CSV ───────────────────
-        struct RunRecord
+        static readonly string Header =
+            "Run,Seed,CodeVersion,Mode,LevelValid,RejectReason,GenerationAttempts," +
+            "Steps,KRel,KRelApplied,SolutionObjects,Mirrors,Refractors,RuleTransitions,Decoys,TotalObjects,NobjMax,GridWidth,GridHeight," +
+            "ClLegacy,MIDlegacy,ClNorm,Ch,Ci,MIDstatic," +
+            "Mr,Mo,Mi,Md,MIDmob,MIDM,NActions,NInteract,NDecoyInteract,InitialOnBeam," +
+            "CertificateValid,CertificateReachable,CertificateLength," +
+            "Solved,SearchPhase,FinalPhase,SearchTimedOut,PlanFailedPhysically,LaserHit,DoorOpened,WalkTeleports," +
+            "SearchNodes,SearchTimeMs,TotalPlacements,InPlaceRotations,Relocations,ExecutionTimeMs," +
+            "SweepIterations,SweepRelocations,SolveTimeMs,GenerationTimeMs,"+
+            "Solver,MovementRule,SearchGenerated,PlanLength,WalkCells,Replans,MaxDepthReached,FailReason";
+
+        void Awake()
         {
-            // Identification
-            public int run, level;
-
-            // Puzzle structure (from PCG generator)
-            public int steps, solObjs, mirrorCount, refractorCount;
-            public int ruleTransitions, decoys, totalObjs, gridWidth, gridHeight;
-
-            // MID components (paper Section 3.3)
-            public float Cl;    // Component Density       = TotalObjects / 256
-            public float Ch;    // Rule Heterogeneity      = RuleTransitions / (SolutionObjects - 1)
-            public float Ci;    // Component Complexity    = Refractors / SolutionObjects
-            public float MID;   // Composite score = α·Cl + β·Ch + γ·Ci
-
-            // Solver outcome
-            public bool solved;
-            public string solvePhase;
-
-            // Search performance (logical only, no physics wait)
-            public int searchNodes;
-            public float searchTimeMs;
-
-            // Execution performance (physical movement)
-            public int totalPlacements, inPlaceRotations, relocations;
-            public float execTimeMs;
-
-            // Sweep-stage effort (only non-zero when solvePhase starts with "Sweep")
-            // Added so RQ2 analysis can show how much extra work the solver
-            // needed once it fell back to CorrectionSweep, instead of just
-            // knowing "it used Sweep" with no sense of how hard that was.
-            public int sweepIterations, sweepRelocations;
-
-            // Overall timing
-            public float solveTimeMs, genMs;
+            QualitySettings.vSyncCount = 0;
+            Application.targetFrameRate = targetFrameRate;   // search yields per frame, so fix the frame rate
         }
 
-        // ════════════════════════════════════════════════════════════
         void Start()
         {
             if (gridVisualizer == null) gridVisualizer = FindFirstObjectByType<GridVisualizer>();
-            if (solverAgent == null) solverAgent = FindFirstObjectByType<AISolverAgent>();
-            currentSteps = startSteps;
-            currentDecoys = startDecoys;
+            if (solverBot == null) solverBot = FindFirstObjectByType<PuzzleBot>();
+            if (solverBot == null) Debug.LogError("[Batch] No PuzzleBot in the scene. Add it to the agent GameObject.");
             if (runOnStart) StartCoroutine(RunBatch());
         }
 
         public void StartBatch() => StartCoroutine(RunBatch());
 
-        // ════════════════════════════════════════════════════════════
-        // Returns the (steps, decoys) pair to use for the given zero-based
-        // run index. In stratified mode this is a deterministic round-robin
-        // over every (Steps × Decoys) combination so each tier gets roughly
-        // totalRuns / (stepsRange × decoyLevels.Length) samples — instead of
-        // the old adaptive mode, which raced to max difficulty in ~10 runs
-        // and spent the other 990+ runs stuck at a single tier.
-        // ════════════════════════════════════════════════════════════
-        (int steps, int decoys) GetDifficultyForRun(int zeroBasedIndex)
+        // Deterministic round-robin: Steps cycles fastest, then Decoys, then kRel.
+        (int steps, int decoys, int kRel) GetDifficultyForRun(int i)
         {
-            int stepsRange = Mathf.Max(1, maxSteps - startSteps + 1);
-            int decoyCount = (decoyLevels != null && decoyLevels.Length > 0) ? decoyLevels.Length : 1;
-
-            int stepsIdx = zeroBasedIndex % stepsRange;          // cycles fastest
-            int decoyIdx = (zeroBasedIndex / stepsRange) % decoyCount; // cycles slower
-
-            int steps = startSteps + stepsIdx;
-            int decoys = (decoyLevels != null && decoyLevels.Length > 0) ? decoyLevels[decoyIdx] : startDecoys;
-            return (steps, decoys);
+            int sR = Mathf.Max(1, maxSteps - startSteps + 1);
+            int dR = Mathf.Max(1, decoyLevels.Length);
+            int kR = Mathf.Max(1, kRelLevels.Length);
+            int cells = sR * dR * kR;
+            i = (int)(((long)i * Mathf.Max(1, designStride)) % cells);
+            int steps = startSteps + i % sR;
+            int decoys = decoyLevels.Length > 0 ? decoyLevels[(i / sR) % dR] : 0;
+            int kRel = kRelLevels.Length > 0 ? kRelLevels[(i / (sR * dR)) % kR] : 0;
+            return (steps, decoys, kRel);
         }
 
-        // ════════════════════════════════════════════════════════════
         IEnumerator RunBatch()
         {
-            int stepsRangeForLog = Mathf.Max(1, maxSteps - startSteps + 1);
-            int decoyCountForLog = (decoyLevels != null && decoyLevels.Length > 0) ? decoyLevels.Length : 1;
-            string modeMsg = useStratifiedSampling
-                ? $"stratified | {stepsRangeForLog} steps × {decoyCountForLog} decoy levels " +
-                  $"= {stepsRangeForLog * decoyCountForLog} tiers, ~{totalRuns / (stepsRangeForLog * decoyCountForLog)} runs/tier"
-                : $"adaptive | startSteps={startSteps}";
-            Debug.Log($"[Batch] Starting {totalRuns} runs | mode={modeMsg}");
-            records.Clear();
-            currentRun = 0;
-            solvedInSession = 0;
+            int cells = (maxSteps - startSteps + 1) * decoyLevels.Length * kRelLevels.Length;
+            Debug.Log($"[Batch] {totalRuns} runs | {cells} design cells | mode=" +
+                      (certificateReplayMode ? "certificate replay" : "solver"));
+            rows.Clear(); validRuns = solvedRuns = 0;
+            int nObjMax = (maxSteps - 1) + decoyLevels.Max();   // check against generator: Nsol <= Steps - 1
 
             for (int i = 0; i < totalRuns; i++)
             {
-                currentRun = i + 1;
+                int run = i + 1;
+                int seed = baseSeed + run;
+                var d = GetDifficultyForRun(i);
+                gridVisualizer.minSteps = d.steps;
+                gridVisualizer.maxSteps = d.steps;
+                gridVisualizer.decoyCount = d.decoys;
+                gridVisualizer.kRel = d.kRel;
 
-                // Apply difficulty
-                if (useStratifiedSampling)
-                {
-                    (currentSteps, currentDecoys) = GetDifficultyForRun(i);
-                }
-                gridVisualizer.minSteps = currentSteps;
-                gridVisualizer.maxSteps = currentSteps;
-                gridVisualizer.decoyCount = currentDecoys;
-
-                Debug.Log($"[Batch] Run {currentRun}/{totalRuns} " +
-                          $"steps={currentSteps} decoys={currentDecoys}");
-
-                // Generate level and measure generation time
                 float gStart = Time.realtimeSinceStartup;
-                gridVisualizer.GenerateLevel();
+                gridVisualizer.GenerateLevel(seed);
                 float gMs = (Time.realtimeSinceStartup - gStart) * 1000f;
 
                 yield return new WaitForEndOfFrame();
                 yield return new WaitForSeconds(0.3f);
 
-                // Run solver and wait for completion
+                if (!gridVisualizer.LastLevelValid)
+                {
+                    rows.Add(Row(run, seed, d.steps, d.kRel, nObjMax, gMs, false));
+                    continue;
+                }
+                validRuns++;
+
                 bool waiting = true;
-                solverAgent.OnSolveComplete = _ => { waiting = false; };
-                solverAgent.StartSolve();
+                solverBot.OnSolveComplete = _ => { waiting = false; };
+                if (certificateReplayMode) solverBot.StartReplay(gridVisualizer.LastScramble.Certificate);
+                else solverBot.StartSolve();
                 while (waiting) yield return null;
 
-                // Wait for agent to finish walking through the door
                 yield return new WaitForSeconds(exitDoorWait);
 
-                // ── Collect puzzle structure data ──
-                bool solved = solverAgent.WasSolved;
-                int gw = gridVisualizer.desiredWidth;
-                int gh = gridVisualizer.desiredHeight;
-                int solObjs = gridVisualizer.LastSolutionObjectCount;
-                int mirrorCount = gridVisualizer.LastMirrorCount;
-                int refractorCount = gridVisualizer.LastRefractorCount;
-                int ruleTransitions = gridVisualizer.LastRuleTransitions;
+                if (solverBot.WasSolved) solvedRuns++;
+                rows.Add(Row(run, seed, d.steps, d.kRel, nObjMax, gMs, true));
 
-                // ── MID Calculation (paper Section 3.4.3) ────────────
-                //
-                // Cl = Component Density
-                //      สัดส่วนของ object ทั้งหมดบน grid (รวม Decoys) เทียบกับพื้นที่ grid
-                //      = N_totalObjects / 256  ตามรายงาน Section 3.4.3
-                //      ใช้ TotalObjects (SolutionObjects + Decoys) เพื่อ reflect
-                //      visual density ที่ผู้เล่นมองเห็นจริง ไม่ใช่แค่ solution path
-                int totalObjs = gridVisualizer.LastTotalObjectCount;
-                float Cl = (float)totalObjs / (gw * gh);
+                if (exportLayouts)
+                    LayoutExporter.Write(Path.Combine(OutDir, "layouts"), run, seed,
+                        gridVisualizer.LevelGrid, gridVisualizer.LastEmitter, gridVisualizer.LastEmitDir,
+                        gridVisualizer.LastReceiver, gridVisualizer.LastSolution, gridVisualizer.LastScramble);
 
-                // Ch = Rule Heterogeneity
-                //      Fraction of consecutive bend pairs that switch mechanic type.
-                //      0 = all same type, 1 = every bend alternates Mirror↔Refractor.
-                //      Guard against div-by-zero when solObjs <= 1.
-                float Ch = solObjs > 1
-                    ? (float)ruleTransitions / (solObjs - 1)
-                    : 0f;
-
-                // Ci = Interaction Density
-                //      Fraction of bend objects that are Refractors.
-                //      Refractors have higher cognitive load than Mirrors because
-                //      their deflection depends on chirality and a 3-layer physics check.
-                //      0 = all Mirrors, 1 = all Refractors.
-                //      Guard against div-by-zero when solObjs = 0.
-                float Ci = solObjs > 0
-                    ? (float)refractorCount / solObjs
-                    : 0f;
-
-                // Composite MID = α·Cl + β·Ch + γ·Ci
-                float mid = ALPHA * Cl + BETA * Ch + GAMMA * Ci;
-
-                records.Add(new RunRecord
+                if (run % 10 == 0)
                 {
-                    // Identification
-                    run = currentRun,
-                    level = solvedInSession + 1,
-
-                    // Puzzle structure
-                    steps = currentSteps,
-                    solObjs = solObjs,
-                    mirrorCount = mirrorCount,
-                    refractorCount = refractorCount,
-                    ruleTransitions = ruleTransitions,
-                    decoys = gridVisualizer.LastDecoyCount,
-                    totalObjs = totalObjs,   // = SolutionObjects + Decoys (ใช้ตัวแปรที่ declare ไว้แล้วข้างบน)
-                    gridWidth = gw,
-                    gridHeight = gh,
-
-                    // MID components
-                    Cl = Cl,
-                    Ch = Ch,
-                    Ci = Ci,
-                    MID = mid,
-
-                    // Solver outcome
-                    solved = solved,
-                    solvePhase = solverAgent.SolvePhase,
-
-                    // Search performance
-                    searchNodes = solverAgent.SolveIterations,
-                    searchTimeMs = solverAgent.SearchTimeMs,
-
-                    // Execution performance
-                    totalPlacements = solverAgent.TotalPlacements,
-                    inPlaceRotations = solverAgent.InPlaceRotations,
-                    relocations = solverAgent.Relocations,
-                    execTimeMs = solverAgent.ExecutionTimeMs,
-
-                    // Sweep-stage effort
-                    sweepIterations = solverAgent.SweepIterations,
-                    sweepRelocations = solverAgent.SweepRelocations,
-
-                    // Overall timing
-                    solveTimeMs = solverAgent.SolveTimeMs,
-                    genMs = gMs
-                });
-
-                // Update difficulty on success (legacy adaptive mode only —
-                // stratified mode already set steps/decoys deterministically above)
-                if (solved)
-                {
-                    solvedInSession++;
-                    if (!useStratifiedSampling)
-                    {
-                        if (currentSteps < maxSteps) currentSteps++;
-                        currentDecoys = Mathf.Min(startDecoys + solvedInSession / decoyEveryN, 4);
-                        Debug.Log($"[Batch] Solved! Next steps={currentSteps} decoys={currentDecoys}");
-                    }
+                    Debug.Log($"[Batch] {run}/{totalRuns} | valid={validRuns} solved={solvedRuns}");
+                    ExportCSV();   // checkpoint: a crash does not lose the whole batch
                 }
-
-                // Progress log every 10 runs
-                if (currentRun % 10 == 0)
-                {
-                    int s = 0;
-                    foreach (var r in records) if (r.solved) s++;
-                    Debug.Log($"[Batch] Progress {currentRun}/{totalRuns} | " +
-                              $"SolveRate={s * 100f / records.Count:F1}% | " +
-                              $"Steps={currentSteps} Decoys={currentDecoys}");
-                }
-
                 yield return new WaitForSeconds(0.1f);
             }
-
             ExportCSV();
+            Debug.Log($"[Batch] COMPLETE valid={validRuns}/{totalRuns} solved={solvedRuns} -> {OutDir}");
         }
 
-        // ════════════════════════════════════════════════════════════
+        string Row(int run, int seed, int steps, int kRel, int nObjMax, float gMs, bool valid)
+        {
+            var g = gridVisualizer; var a = solverBot; var ci = CultureInfo.InvariantCulture;
+            string F(float v) => v.ToString("F4", ci);
+            string F2(float v) => v.ToString("F2", ci);
+            string B(bool v) => v ? "1" : "0";
+            string mode = certificateReplayMode ? "Replay" : "Solver";
+
+            if (!valid)
+                return string.Join(",", new[] { run.ToString(), seed.ToString(), codeVersion, mode, "0",
+                    (g.LastRejectReason ?? "").Replace(',', ';'), g.LastGenerationAttempts.ToString(),
+                    steps.ToString(), kRel.ToString() }) + new string(',', Header.Split(',').Length - 9);
+
+            var mob = g.LastMobility;
+            var mid = MidCalculator.Compute(g.LastTotalObjectCount, nObjMax, g.desiredWidth, g.desiredHeight,
+                                            g.LastSolutionObjectCount, g.LastRuleTransitions, g.LastRefractorCount, mob);
+            var scr = g.LastScramble;
+            var cols = new List<string>
+            {
+                run.ToString(), seed.ToString(), codeVersion, mode, "1", "", g.LastGenerationAttempts.ToString(),
+                steps.ToString(), kRel.ToString(), scr.KRelApplied.ToString(),
+                g.LastSolutionObjectCount.ToString(), g.LastMirrorCount.ToString(), g.LastRefractorCount.ToString(),
+                g.LastRuleTransitions.ToString(), g.LastDecoyCount.ToString(), g.LastTotalObjectCount.ToString(),
+                nObjMax.ToString(), g.desiredWidth.ToString(), g.desiredHeight.ToString(),
+                F(mid.ClLegacy), F(mid.MidLegacy), F(mid.ClNorm), F(mid.Ch), F(mid.Ci), F(mid.MidStatic),
+                F(mob.Mr), F(mob.Mo), F(mob.Mi), F(mob.Md), F(mid.MidMobility), F(mid.MidM),
+                mob.NActions.ToString(), mob.NInteract.ToString(), mob.NDecoyInteract.ToString(), mob.InitialOnBeam.ToString(),
+                B(scr.CertificateValid), B(scr.CertificateReachable), scr.Certificate.Count.ToString(),
+                B(a.WasSolved), a.SearchPhase, a.FinalPhase, B(a.SearchTimedOut), B(a.PlanFailedPhysically),
+                B(a.LaserHit), B(a.DoorOpened), a.WalkTeleports.ToString(),
+                a.SolveIterations.ToString(), F2(a.SearchTimeMs), a.TotalPlacements.ToString(),
+                a.InPlaceRotations.ToString(), a.Relocations.ToString(), F2(a.ExecutionTimeMs),
+                a.SweepIterations.ToString(), a.SweepRelocations.ToString(), F2(a.SolveTimeMs), F2(gMs),
+                "PuzzleBot", LightPCG.Core.MovementRule.Describe(), a.SearchGenerated.ToString(), a.PlanLength.ToString(),
+                a.WalkCells.ToString(), a.Replans.ToString(), a.MaxDepthReached.ToString(),
+                (a.FailReason ?? "").Replace(',', ';')
+            };
+            return string.Join(",", cols);
+        }
+
         void ExportCSV()
         {
+            Directory.CreateDirectory(OutDir);
             var sb = new StringBuilder();
+            sb.AppendLine(Header);
+            foreach (var r in rows) sb.AppendLine(r);
+            File.WriteAllText(Path.Combine(OutDir, csvFileName), sb.ToString());
 
-            // ── Header ────────────────────────────────────────────────
-            sb.AppendLine(
-                "Run,Level," +
-                "Steps,SolutionObjects,Mirrors,Refractors,RuleTransitions," +
-                "Decoys,TotalObjects,GridWidth,GridHeight," +
-                "Cl,Ch,Ci,MID," +
-                "Solved,SolvePhase," +
-                "SearchNodes,SearchTimeMs," +
-                "TotalPlacements,InPlaceRotations,Relocations,ExecutionTimeMs," +
-                "SweepIterations,SweepRelocations," +
-                "SolveTimeMs,GenerationTimeMs");
-
-            // ── Rows ──────────────────────────────────────────────────
-            foreach (var r in records)
-                sb.AppendLine(
-                    $"{r.run},{r.level}," +
-                    $"{r.steps},{r.solObjs},{r.mirrorCount},{r.refractorCount},{r.ruleTransitions}," +
-                    $"{r.decoys},{r.totalObjs},{r.gridWidth},{r.gridHeight}," +
-                    $"{r.Cl:F4},{r.Ch:F4},{r.Ci:F4},{r.MID:F4}," +
-                    $"{(r.solved ? 1 : 0)},{r.solvePhase}," +
-                    $"{r.searchNodes},{r.searchTimeMs:F2}," +
-                    $"{r.totalPlacements},{r.inPlaceRotations},{r.relocations},{r.execTimeMs:F2}," +
-                    $"{r.sweepIterations},{r.sweepRelocations}," +
-                    $"{r.solveTimeMs:F2},{r.genMs:F2}");
-
-            // ── Save ──────────────────────────────────────────────────
-            string path = Path.Combine(Application.dataPath, csvFileName);
-            File.WriteAllText(path, sb.ToString());
-
-            // ── Summary log ───────────────────────────────────────────
-            int solved2 = 0;
-            int p1a = 0, p1b = 0, sweepS1 = 0, sweepS2 = 0, sweepS3 = 0, sweepFailed = 0,
-                trivial = 0, none = 0;
-            float sumCl = 0f, sumCh = 0f, sumCi = 0f, sumMID = 0f;
-
-            foreach (var r in records)
-            {
-                if (r.solved) solved2++;
-                switch (r.solvePhase)
-                {
-                    case "1A": p1a++; break;
-                    case "1B": p1b++; break;
-                    case "Sweep-S1": sweepS1++; break;
-                    case "Sweep-S2": sweepS2++; break;
-                    case "Sweep-S3": sweepS3++; break;
-                    case "Sweep": sweepFailed++; break; // entered sweep but never solved
-                    case "Trivial": trivial++; break;
-                    default: none++; break;
-                }
-                sumCl += r.Cl;
-                sumCh += r.Ch;
-                sumCi += r.Ci;
-                sumMID += r.MID;
-            }
-
-            int n = records.Count;
-            Debug.Log(
-                $"[Batch] ══ COMPLETE ══ {solved2}/{n} solved\n" +
-                $"  Phase breakdown — Trivial:{trivial} 1A:{p1a} 1B:{p1b} " +
-                $"Sweep-S1:{sweepS1} Sweep-S2:{sweepS2} Sweep-S3:{sweepS3} " +
-                $"SweepFailed:{sweepFailed} Failed:{none}\n" +
-                $"  MID averages — " +
-                $"Cl={sumCl / n:F4}  Ch={sumCh / n:F4}  Ci={sumCi / n:F4}  MID={sumMID / n:F4}\n" +
-                $"  CSV saved to: {path}");
+            // Run metadata for Chapter 3 (reproducibility)
+            File.WriteAllText(Path.Combine(OutDir, "run_info.txt"),
+                $"codeVersion={codeVersion}\nunity={Application.unityVersion}\nbaseSeed={baseSeed}\n" +
+                $"totalRuns={totalRuns}\nmode={(certificateReplayMode ? "replay" : "solver")}\n" +
+                $"solver=PuzzleBot movementRule={LightPCG.Core.MovementRule.Describe()} " +
+                $"nodeLimit={(solverBot != null ? solverBot.maxExpandedNodes : 0)} depth={(solverBot != null ? solverBot.maxPlanDepth : 0)} " +
+                $"timeLimitMs={(solverBot != null ? solverBot.searchTimeLimitMs : 0)} w={(solverBot != null ? solverBot.heuristicWeight : 0)}\n" +
+                $"targetFrameRate={targetFrameRate}\ndevice={SystemInfo.deviceModel}\ncpu={SystemInfo.processorType}\n" +
+                $"designStride={designStride}\nsteps={startSteps}..{maxSteps}\ndecoys={string.Join("/", decoyLevels)}\nkRel={string.Join("/", kRelLevels)}\n" +
+                $"midWeights=static 1/3 each; mobility 1/4 each; alpha={MidCalculator.ALPHA}\n");
         }
     }
 }

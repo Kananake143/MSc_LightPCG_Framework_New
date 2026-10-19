@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -84,7 +84,17 @@ namespace LightPCG.Systems
         // these, every Sweep-solved puzzle was indistinguishable in the CSV,
         // which hid the difficulty signal exactly where it matters most.
         [HideInInspector] public int SweepIterations;   // rotation/placement attempts made inside S1+S2+S3
-        [HideInInspector] public int SweepRelocations;  // relocations performed specifically by Sweep S2
+        [HideInInspector] public int SweepRelocations;
+
+        // ── MID-M bookkeeping (written to CSV by BatchRunner) ─────────
+        [HideInInspector] public string SearchPhase = "None";  // what logical search found (1A/1B/None)
+        [HideInInspector] public string FinalPhase = "None";   // single consistent label set in Finish()
+        [HideInInspector] public bool SearchTimedOut;          // logical search hit MAX_SEARCH_SECONDS
+        [HideInInspector] public bool PlanFailedPhysically;    // logical plan executed but laser missed
+        [HideInInspector] public bool LaserHit;                // RealSolved() at Finish
+        [HideInInspector] public bool DoorOpened;              // ReceiverDetector sustained-hit criterion
+        [HideInInspector] public int WalkTeleports;            // WalkTo had no path / got stuck and teleported
+        private bool replayMode;  // relocations performed specifically by Sweep S2
                                                         // (kept separate from Phase-1B's `Relocations` above)
 
         public System.Action<bool> OnSolveComplete;
@@ -146,6 +156,11 @@ namespace LightPCG.Systems
             cc.center = new Vector3(0, 0.5f, 0);
             cc.minMoveDistance = 0f; cc.skinWidth = 0.08f;
             cc.slopeLimit = 0f; cc.stepOffset = 0.1f;
+
+            // Keep the agent out of the laser (see LaserSystem.ExcludeAgentLayer).
+            int agentLayer = LayerMask.NameToLayer("Agent");
+            if (agentLayer >= 0) gameObject.layer = agentLayer;
+            else Debug.LogWarning("[AI] Layer 'Agent' not found — the agent's collider can block the laser.");
         }
 
         void Start()
@@ -172,6 +187,11 @@ namespace LightPCG.Systems
             SweepIterations = 0;
             SweepRelocations = 0;
             SolvePhase = "None";
+            SearchPhase = "None";
+            FinalPhase = "None";
+            SearchTimedOut = PlanFailedPhysically = LaserHit = DoorOpened = false;
+            WalkTeleports = 0;
+            replayMode = false;
             allLasers = null;
             _searchResult = null;
             _searchDone = false;
@@ -185,6 +205,45 @@ namespace LightPCG.Systems
             }
 
             StartCoroutine(Pipeline());
+        }
+
+        // ════════════════════════════════════════════════════════════
+        // CERTIFICATE REPLAY (MID-M) — executes the generator's certificate
+        // physically, without search or sweep, to measure logic–physics agreement.
+        // ════════════════════════════════════════════════════════════
+        public void StartReplay(List<Move> certificate)
+        {
+            StartSolve();          // reset counters (also queues Pipeline)
+            StopAllCoroutines();   // cancel Pipeline before its first frame
+            running = true;
+            replayMode = true;
+            StartCoroutine(ReplayPipeline(certificate));
+        }
+
+        IEnumerator ReplayPipeline(List<Move> cert)
+        {
+            yield return new WaitForEndOfFrame();
+            yield return new WaitForSeconds(0.5f);
+
+            grid = gridVisualizer.LevelGrid;
+            spacing = gridVisualizer.Spacing;
+            allLasers = FindLaserSystems();
+            solveStart = searchStart = execStart = Time.realtimeSinceStartup;
+            TeleportTo(FindFirst(TileType.Emitter));
+            yield return new WaitForSeconds(0.3f);
+
+            SolvePhase = SearchPhase = "Replay";
+            var plan = new List<PlacementAction>();
+            foreach (var m in cert)
+                plan.Add(new PlacementAction
+                {
+                    SourceCell = m.From,
+                    TargetCell = m.To,
+                    ObjType = grid.GetTile(m.From.x, m.From.y),
+                    Rotation = m.Rot
+                });
+            yield return StartCoroutine(ExecutePlan(plan));
+            if (running) Finish(false);
         }
 
         // ════════════════════════════════════════════════════════════
@@ -241,6 +300,7 @@ namespace LightPCG.Systems
                 // applies from this point on.
                 if (_searchCoroutine != null) StopCoroutine(_searchCoroutine);
                 _searchCoroutine = null;
+                SearchTimedOut = true;
                 Debug.LogWarning($"[AI] Search timeout after {MAX_SEARCH_SECONDS}s — going to sweep.");
             }
 
@@ -304,14 +364,14 @@ namespace LightPCG.Systems
             {
                 Debug.LogWarning("[AI] 0 on-beam objects — beam too short. Skipping 1A, going to 1B.");
                 yield return StartCoroutine(RelocationSearch(initial, receiver));
-                if (_searchResult != null) SolvePhase = "1B";
+                if (_searchResult != null) SolvePhase = SearchPhase = "1B";
                 yield break;
             }
 
             if (onBeam.Count > 0)
             {
                 yield return StartCoroutine(RotationSearch(initial, onBeam, receiver, "1A-OnBeam"));
-                if (_searchResult != null) { SolvePhase = "1A"; yield break; }
+                if (_searchResult != null) { SolvePhase = SearchPhase = "1A"; yield break; }
             }
 
             var allObjs = new List<(Vector2Int, TileType)>(onBeam);
@@ -319,12 +379,12 @@ namespace LightPCG.Systems
             if (allObjs.Count > onBeam.Count)
             {
                 yield return StartCoroutine(RotationSearch(initial, allObjs, receiver, "1A-Full"));
-                if (_searchResult != null) { SolvePhase = "1A"; yield break; }
+                if (_searchResult != null) { SolvePhase = SearchPhase = "1A"; yield break; }
             }
 
             Debug.Log("[AI] Phase 1A exhausted — trying relocation search (1B).");
             yield return StartCoroutine(RelocationSearch(initial, receiver));
-            if (_searchResult != null) SolvePhase = "1B";
+            if (_searchResult != null) SolvePhase = SearchPhase = "1B";
         }
 
         // ── Rotation Search ───────────────────────────────────────
@@ -334,22 +394,30 @@ namespace LightPCG.Systems
             Vector2Int receiver,
             string label)
         {
-            int[] rots = { 0, 45, 90, 135, 180, 225, 270, 315 };
+            // MID-M: enumerate optically DISTINCT orientations only
+            // (2 classes per mirror, 3 per refractor — see OpticsRules).
             int n = objects.Count;
-            int total = (int)Mathf.Pow(8, n);
+            var reps = objects.Select(o => OpticsRules.ClassRepresentatives(o.type)).ToArray();
+            long total = 1;
+            foreach (var r in reps) total *= r.Length;
 
-            for (int combo = 0; combo < total; combo++)
+            for (long combo = 0; combo < total; combo++)
             {
                 SolveIterations++;
                 if (SolveIterations % YIELD_EVERY == 0) yield return null;
+                if (SolveIterations >= maxSearchNodes)
+                {
+                    Debug.LogWarning($"[AI] {label}: node limit hit.");
+                    yield break;
+                }
 
                 var snap = initial.Clone();
-                int tmp = combo;
+                long tmp = combo;
                 for (int i = 0; i < n; i++)
                 {
-                    int rotIdx = tmp % 8; tmp /= 8;
+                    int k = (int)(tmp % reps[i].Length); tmp /= reps[i].Length;
                     var (cell, type) = objects[i];
-                    snap.objects[cell] = (type, rots[rotIdx]);
+                    snap.objects[cell] = (type, reps[i][k]);
                 }
 
                 if (LogicalBeamReachesReceiver(snap, receiver))
@@ -360,7 +428,7 @@ namespace LightPCG.Systems
                         var (cell, type) = objects[i];
                         int newRot = snap.objects[cell].rot;
                         int oldRot = initial.objects[cell].rot;
-                        if (newRot != oldRot)
+                        if (OpticsRules.EffectiveClass(type, newRot) != OpticsRules.EffectiveClass(type, oldRot))
                             plan.Add(new PlacementAction
                             {
                                 SourceCell = cell,
@@ -485,7 +553,7 @@ namespace LightPCG.Systems
 
 
             float fastWait = Mathf.Min(physicsWait, 0.08f);
-            int[] rots = { 0, 45, 90, 135, 180, 225, 270, 315 };
+            int[] rots = { 0, 45, 90, 135, 180, 225, 270, 315 };   // kept for the SweepS1 signature; per-type sets are used below
             Vector2Int receiver = FindFirst(TileType.Receiver);
 
             var allObjects = GetInteractables();
@@ -565,7 +633,7 @@ namespace LightPCG.Systems
 
                 // Try each rotation at the new position
                 bool relocateSolved = false;
-                foreach (int rot in rots)
+                foreach (int rot in OpticsRules.ClassRepresentatives(movedType))
                 {
                     SolveIterations++;
                     SweepIterations++;
@@ -610,7 +678,7 @@ namespace LightPCG.Systems
                     TeleportTo(objCell);
                     yield return new WaitForSeconds(fastWait);
 
-                    foreach (int rot in rots)
+                    foreach (int rot in RotationsAt(objCell))
                     {
                         SolveIterations++;
                         SweepIterations++;
@@ -666,7 +734,7 @@ namespace LightPCG.Systems
                     yield return new WaitForSeconds(fastWait);
 
                     int baseScore = ScoreBeamLogical();
-                    foreach (int rot in rots)
+                    foreach (int rot in RotationsAt(objCell))
                     {
                         SolveIterations++;
                         SweepIterations++;
@@ -756,6 +824,13 @@ namespace LightPCG.Systems
             }
             else
             {
+                PlanFailedPhysically = true;
+                if (replayMode)
+                {
+                    Debug.LogWarning("[AI] Certificate replay failed under physics.");
+                    Finish(false);
+                    yield break;
+                }
                 Debug.LogWarning("[AI] Plan failed under physics — running sweep.");
                 SolvePhase = "Sweep";
                 yield return StartCoroutine(CorrectionSweep());
@@ -795,7 +870,7 @@ namespace LightPCG.Systems
                 result.endCell = pos;
 
                 TileType ft = grid.GetTile(pos.x, pos.y);
-                if (ft == TileType.Wall || ft == TileType.Emitter) break;
+                if (ft == TileType.Wall || ft == TileType.Emitter || ft == TileType.Door) break;  // door blocks the laser physically
                 if (ft == TileType.Receiver) { result.hitReceiver = true; break; }
 
                 if (snap.objects.TryGetValue(pos, out var obj))
@@ -889,7 +964,7 @@ namespace LightPCG.Systems
                 if (seen.Contains(st)) break;
                 seen.Add(st);
                 TileType ft = grid.GetTile(pos.x, pos.y);
-                if (ft == TileType.Wall || ft == TileType.Receiver || ft == TileType.Emitter) break;
+                if (ft == TileType.Wall || ft == TileType.Receiver || ft == TileType.Emitter || ft == TileType.Door) break;
                 if (snap.objects.TryGetValue(pos, out var obj))
                     dir = obj.type == TileType.Mirror
                         ? MirrorDeflect(dir, obj.rot) : RefractorDeflect(dir, obj.rot);
@@ -905,7 +980,7 @@ namespace LightPCG.Systems
                 : (toReceiver.y >= 0 ? new Vector2Int(0, 1) : new Vector2Int(0, -1));
 
             var good = new List<int>(); var fallback = new List<int>();
-            foreach (int rot in new[] { 0, 45, 90, 135, 180, 225, 270, 315 })
+            foreach (int rot in OpticsRules.AllowedRotations(objType))
             {
                 var result = objType == TileType.Mirror
                     ? MirrorDeflect(inDir, rot) : RefractorDeflect(inDir, rot);
@@ -928,9 +1003,7 @@ namespace LightPCG.Systems
                     TileType t = grid.GetTile(x, y);
                     if (t != TileType.Mirror && t != TileType.Refractor) continue;
                     var cell = new Vector2Int(x, y);
-                    int rawRot = Mathf.RoundToInt(GetYRot(cell));
-                    int rot = ((rawRot % 360) + 360) % 360;
-                    rot = Mathf.RoundToInt(rot / 45f) * 45 % 360;
+                    int rot = OpticsRules.Snap(t, GetYRot(cell));   // MID-M: snap to allowed orientation
                     snap.objects[cell] = (t, rot);
                 }
             return snap;
@@ -982,7 +1055,7 @@ namespace LightPCG.Systems
             if (Vector3.Distance(transform.position, wt) < 0.2f) yield break;
 
             var path = BFS(WorldToGrid(transform.position), target);
-            if (path == null || path.Count == 0) { TeleportTo(target); yield break; }
+            if (path == null || path.Count == 0) { WalkTeleports++; TeleportTo(target); yield break; }
 
             foreach (var step in path)
             {
@@ -1003,6 +1076,7 @@ namespace LightPCG.Systems
                 if (timeout <= 0f)
                 {
                     Debug.LogWarning($"[AI] WalkTo stuck at step {step} — teleporting.");
+                    WalkTeleports++;
                     TeleportTo(step);
                     yield return new WaitForEndOfFrame();
                 }
@@ -1011,6 +1085,7 @@ namespace LightPCG.Systems
             if (Vector3.Distance(transform.position, wt) > 0.5f)
             {
                 Debug.LogWarning($"[AI] WalkTo did not reach {target} — teleporting.");
+                WalkTeleports++;
                 TeleportTo(target);
             }
         }
@@ -1095,25 +1170,11 @@ namespace LightPCG.Systems
         // ════════════════════════════════════════════════════════════
         // GRID MATH
         // ════════════════════════════════════════════════════════════
-        Vector2Int MirrorDeflect(Vector2Int d, int rot)
-        {
-            float a = rot;
-            return (Mathf.Abs(Mathf.DeltaAngle(a, 45f)) < 22.5f ||
-                    Mathf.Abs(Mathf.DeltaAngle(a, 225f)) < 22.5f)
-                ? new Vector2Int(d.y, d.x) : new Vector2Int(-d.y, -d.x);
-        }
+        // MID-M: single rule table shared with LaserSystem (see OpticsRules.cs).
+        Vector2Int MirrorDeflect(Vector2Int d, int rot) => OpticsRules.Deflect(TileType.Mirror, rot, d);
+        Vector2Int RefractorDeflect(Vector2Int d, int rot) => OpticsRules.Deflect(TileType.Refractor, rot, d);
 
-        Vector2Int RefractorDeflect(Vector2Int d, int rot)
-        {
-            if (Mathf.Abs(Mathf.DeltaAngle(rot, 0f)) <= 5f ||
-                Mathf.Abs(Mathf.DeltaAngle(rot, 180f)) <= 5f)
-                return d; // pass-through
-
-            return (Mathf.Abs(Mathf.DeltaAngle(rot, 90f)) < 45f ||
-                    Mathf.Abs(Mathf.DeltaAngle(rot, 270f)) < 45f)
-                ? new Vector2Int(-d.y, d.x)
-                : new Vector2Int(d.y, -d.x);
-        }
+        int[] RotationsAt(Vector2Int cell) => OpticsRules.ClassRepresentatives(grid.GetTile(cell.x, cell.y));
 
         float GetYRot(Vector2Int cell)
         {
@@ -1225,6 +1286,12 @@ namespace LightPCG.Systems
         void Finish(bool solved)
         {
             WasSolved = solved;
+            // One consistent label per run: a run can no longer be "1A" and unsolved.
+            FinalPhase = solved ? SolvePhase
+                       : (SolvePhase.StartsWith("Sweep") ? "Sweep-Failed" : "Failed-" + SolvePhase);
+            LaserHit = RealSolved();
+            var rd = FindFirstObjectByType<ReceiverDetector>();
+            DoorOpened = rd != null && rd.IsDoorOpen;
             SolveTimeMs = (Time.realtimeSinceStartup - solveStart) * 1000f;
             if (ExecutionTimeMs <= 0f)
                 ExecutionTimeMs = (Time.realtimeSinceStartup - execStart) * 1000f;
@@ -1247,4 +1314,4 @@ namespace LightPCG.Systems
         bool InB(Vector2Int p)
             => p.x >= 0 && p.x < grid.Width && p.y >= 0 && p.y < grid.Height;
     }
-}
+}

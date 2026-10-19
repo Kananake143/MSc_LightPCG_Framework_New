@@ -1,5 +1,6 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections.Generic;
+using LightPCG.Core;
 
 namespace LightPCG.Systems
 {
@@ -8,7 +9,7 @@ namespace LightPCG.Systems
     {
         [Header("Laser Settings")]
         public float maxLaserDistance = 50f;
-        public int maxBounces = 10;
+        public int maxBounces = 24;   // >= bends + pass-through refractors + decoys
         [Tooltip("Set Everything (-1) or Layer at puzzle objects ")]
         public LayerMask obstacleLayer = -1;
 
@@ -35,6 +36,17 @@ namespace LightPCG.Systems
                 obstacleLayer = ~0;
                 Debug.LogWarning("[LaserSystem] obstacleLayer=Nothing -> reset to Everything. " + "Please set the correct layer in Inspector");
             }
+
+            ExcludeAgentLayer();
+        }
+
+        // The solver agent stands on grid cells while it works. Its CharacterController
+        // is a collider, so it must not block the laser, otherwise RealSolved() fails
+        // whenever the agent is in the beam. Put the agent on a layer named "Agent".
+        void ExcludeAgentLayer()
+        {
+            int agentLayer = LayerMask.NameToLayer("Agent");
+            if (agentLayer >= 0) obstacleLayer = obstacleLayer & ~(1 << agentLayer);
         }
 
         void Update() => TraceLaser();
@@ -65,17 +77,20 @@ namespace LightPCG.Systems
                 pts.Add(hit.point);
                 string tag = hit.collider.tag;
 
-                if (tag == "Mirror")
+                if (tag == "Mirror" || tag == "Refractor")
                 {
-                    // Flat glass: hit.normal is always reliable.
-                    dir = Vector3.Reflect(dir, hit.normal);
-                    pos = hit.point + dir * 0.02f;
-                }
-                else if (tag == "Refractor")
-                {
-                    // Fix Bug 1: Check 3 layers before refraction.
-                    dir = HandleRefractor(dir, hit);
-                    pos = hit.point + dir * 0.02f;
+                    // MID-M: use the SAME grid rule table as the logical solver
+                    // (OpticsRules) instead of mesh normals / prism axes, so that
+                    // logical plans and the physical laser cannot disagree.
+                    var type = tag == "Mirror" ? TileType.Mirror : TileType.Refractor;
+                    Transform obj = TaggedRoot(hit.collider.transform, tag);
+                    int rot = OpticsRules.Snap(type, obj.eulerAngles.y);
+                    Vector2Int gOut = OpticsRules.Deflect(type, rot, ToGridDir(dir));
+
+                    Vector3 centre = obj.position; centre.y = pos.y;
+                    pts[pts.Count - 1] = centre;            // draw the bend at the cell centre
+                    dir = new Vector3(gOut.x, 0f, gOut.y);
+                    pos = centre + dir * 0.02f;             // starts inside the collider -> not re-hit
                 }
                 else if (tag == "Receiver")
                 {
@@ -157,6 +172,17 @@ namespace LightPCG.Systems
                 return dF >= 0f ? F : -F;
         }
 
+        static Vector2Int ToGridDir(Vector3 d)
+            => Mathf.Abs(d.x) >= Mathf.Abs(d.z)
+                ? new Vector2Int(d.x >= 0 ? 1 : -1, 0)
+                : new Vector2Int(0, d.z >= 0 ? 1 : -1);
+
+        static Transform TaggedRoot(Transform t, string tag)
+        {
+            while (t.parent != null && t.parent.CompareTag(tag)) t = t.parent;
+            return t;
+        }
+
         public void ResetLaser() { }
     }
-}
+}
