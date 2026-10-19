@@ -183,6 +183,7 @@ namespace LightPCG.Systems
 
                 // ── replan from what the bot sees now ──
                 PlanFailedPhysically = true;
+                LogMismatch(em, ed);
                 if (executed) FailReason = "laser missed after the plan";
                 state = Observe();
                 if (attempt < maxReplans) Replans++;
@@ -190,7 +191,16 @@ namespace LightPCG.Systems
             if (tExec <= 0f) tExec = Time.realtimeSinceStartup;
             Finish(false);
         }
-
+        void LogMismatch(Vector2Int em, Vector2Int ed)
+        {
+            var logical = BeamTracer.Trace(grid, em, ed, Observe().Pieces);
+            var sb = new System.Text.StringBuilder();
+            sb.Append($"[Bot][MISMATCH] logicalHit={logical.HitReceiver} agentCell={agentCell} path=");
+            foreach (var c in logical.Path) sb.Append(c).Append(' ');
+            foreach (var l in FindObjectsByType<LaserSystem>(FindObjectsSortMode.None))
+                sb.Append($"\n  laserHit={l.IsHittingReceiver} lastTag={l.LastHitTag} obj={l.LastHitName} layer={l.LastHitLayer} at={l.LastHitPoint}");
+            Debug.Log(sb.ToString());
+        }
         IEnumerator ReplayPipeline(List<Move> cert)
         {
             yield return new WaitForEndOfFrame();

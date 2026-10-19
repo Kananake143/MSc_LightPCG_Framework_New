@@ -20,7 +20,10 @@ namespace LightPCG.Systems
         private LineRenderer lr;
         private List<Vector3> pts = new List<Vector3>();
         public bool IsHittingReceiver { get; private set; }
-
+        public string LastHitTag { get; private set; } = "(none)";
+        public string LastHitName { get; private set; } = "";
+        public int LastHitLayer { get; private set; }
+        public Vector3 LastHitPoint { get; private set; }
         void Start()
         {
             lr = GetComponent<LineRenderer>();
@@ -55,6 +58,8 @@ namespace LightPCG.Systems
         {
             pts.Clear();
             IsHittingReceiver = false;
+            LastHitTag = "(none)";
+            LastHitName = "";
 
             Vector3 pos = transform.position;
             Vector3 dir = transform.forward;
@@ -76,7 +81,8 @@ namespace LightPCG.Systems
 
                 pts.Add(hit.point);
                 string tag = hit.collider.tag;
-
+                LastHitTag = tag; LastHitName = hit.collider.name;
+                LastHitLayer = hit.collider.gameObject.layer; LastHitPoint = hit.point;
                 if (tag == "Mirror" || tag == "Refractor")
                 {
                     // MID-M: use the SAME grid rule table as the logical solver
