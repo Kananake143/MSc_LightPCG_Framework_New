@@ -20,10 +20,12 @@ namespace LightPCG.Systems
         private LineRenderer lr;
         private List<Vector3> pts = new List<Vector3>();
         public bool IsHittingReceiver { get; private set; }
+        public IReadOnlyList<Vector3> Points => pts;
         public string LastHitTag { get; private set; } = "(none)";
         public string LastHitName { get; private set; } = "";
         public int LastHitLayer { get; private set; }
         public Vector3 LastHitPoint { get; private set; }
+        public bool HitBounceLimit { get; private set; }
         void Start()
         {
             lr = GetComponent<LineRenderer>();
@@ -39,7 +41,11 @@ namespace LightPCG.Systems
                 obstacleLayer = ~0;
                 Debug.LogWarning("[LaserSystem] obstacleLayer=Nothing -> reset to Everything. " + "Please set the correct layer in Inspector");
             }
-
+            if (maxBounces < 24)
+            {
+                Debug.LogWarning($"[LaserSystem] maxBounces={maxBounces} is too low, using 24");
+                maxBounces = 24;
+            }
             ExcludeAgentLayer();
         }
 
@@ -64,8 +70,9 @@ namespace LightPCG.Systems
             Vector3 pos = transform.position;
             Vector3 dir = transform.forward;
             pts.Add(pos);
-
-            for (int b = 0; b < maxBounces; b++)
+            int b;
+            HitBounceLimit = false;
+            for (b = 0; b < maxBounces; b++)
             {
                 RaycastHit hit;
 
@@ -109,7 +116,11 @@ namespace LightPCG.Systems
                     break;
                 }
             }
-
+            if (b >= maxBounces && !IsHittingReceiver)
+            {
+                HitBounceLimit = true;
+                Debug.LogWarning("[LaserSystem] bounce limit reached before the receiver");
+            }
             lr.positionCount = pts.Count;
             lr.SetPositions(pts.ToArray());
         }

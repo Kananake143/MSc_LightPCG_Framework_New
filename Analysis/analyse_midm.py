@@ -185,11 +185,17 @@ def main():
 
     raw = pd.read_csv(a.csv, keep_default_na=False, na_values=[""])
 
-    if a.pilot:
+      if a.pilot:
         sc = scale_check(df); print(sc); sc.to_csv(f"{a.out}/pilot_scale_check.csv")
+        modes = df["Mode"].astype(str).str.lower().unique().tolist() if "Mode" in df else []
+        cvs = df["CodeVersion"].unique().tolist() if "CodeVersion" in df else []
+        print(f"Mode: {modes} | CodeVersion: {cvs}")
         k, n = int(df["Solved"].sum()), len(df); p, lo, hi = wilson(k, n)
-        verdict = "PASS" if p >= 95 else "FAIL"
-        print(f"Logic-physics agreement (replay Solved): {k}/{n} = {p:.1f}% (95% CI {lo:.1f}-{hi:.1f}) -> {verdict} (criterion >= 95%)")
+        if modes == ["replay"]:
+            verdict = "PASS" if p >= 95 else "FAIL"
+            print(f"Logic-physics agreement (replay Solved): {k}/{n} = {p:.1f}% (95% CI {lo:.1f}-{hi:.1f}) -> {verdict} (criterion >= 95%)")
+        else:
+            print(f"Bot success in {modes} mode: {k}/{n} = {p:.1f}%. NOT the pilot gate (the gate is defined for Replay mode only)")
         rq1_table(raw, df).to_csv(f"{a.out}/pilot_rq1.csv", index=False)
         if "KRel" in df: print(df.groupby("KRel")["Solved"].agg(["count", "mean"]))
         return

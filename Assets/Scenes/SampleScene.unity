@@ -763,8 +763,8 @@ MonoBehaviour:
   certificateReplayMode: 0
   gridVisualizer: {fileID: 0}
   solverBot: {fileID: 0}
-  outputFolder: PCG_Output
-  csvFileName: PCG_Results50.csv
+  outputFolder: PCG_Output_diag
+  csvFileName: PCG_Results50_19_10_2026.csv
   exportLayouts: 1
   exitDoorWait: 2
   targetFrameRate: 60

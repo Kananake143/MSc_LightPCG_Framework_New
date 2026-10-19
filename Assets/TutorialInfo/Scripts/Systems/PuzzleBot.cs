@@ -70,6 +70,7 @@ namespace LightPCG.Systems
         float tStart, tExec;
         CharacterController cc;
         bool lastWalkOk;
+        bool countWalk = true;
 
         void Awake()
         {
@@ -114,6 +115,7 @@ namespace LightPCG.Systems
             SolveTimeMs = SearchTimeMs = ExecutionTimeMs = 0f;
             SearchPhase = FinalPhase = "None"; FailReason = "";
             running = true;
+            countWalk = true;
         }
 
         BotConfig Config() => new BotConfig
@@ -184,6 +186,7 @@ namespace LightPCG.Systems
                 // ── replan from what the bot sees now ──
                 PlanFailedPhysically = true;
                 LogMismatch(em, ed);
+                DumpPhysical();
                 if (executed) FailReason = "laser missed after the plan";
                 state = Observe();
                 if (attempt < maxReplans) Replans++;
@@ -199,6 +202,33 @@ namespace LightPCG.Systems
             foreach (var c in logical.Path) sb.Append(c).Append(' ');
             foreach (var l in FindObjectsByType<LaserSystem>(FindObjectsSortMode.None))
                 sb.Append($"\n  laserHit={l.IsHittingReceiver} lastTag={l.LastHitTag} obj={l.LastHitName} layer={l.LastHitLayer} at={l.LastHitPoint}");
+            Debug.Log(sb.ToString());
+        }
+
+        void DumpPhysical()
+        {
+            var sb = new System.Text.StringBuilder("[Bot][PHYS]");
+            foreach (var l in FindObjectsByType<LaserSystem>(FindObjectsSortMode.None))
+            {
+                sb.Append("\n beam: ");
+                foreach (var p in l.Points) sb.Append($"({p.x:0.0},{p.z:0.0}) ");
+            }
+            for (int x = 0; x < grid.Width; x++)
+                for (int y = 0; y < grid.Height; y++)
+                {
+                    var t = grid.GetTile(x, y);
+                    if (!OpticsRules.IsMovable(t)) continue;
+                    var c = new Vector2Int(x, y);
+                    gridVisualizer.SpawnedObjects.TryGetValue(c, out var go);
+                    string dict = go == null ? "null"
+                        : $"{go.name} pos=({go.transform.position.x:0.0},{go.transform.position.z:0.0}) yaw={go.transform.eulerAngles.y:0} cls={OpticsRules.EffectiveClass(t, OpticsRules.Snap(t, go.transform.eulerAngles.y))}";
+                    Vector3 w = gridVisualizer.GridToWorld(x, y); w.y = 0.5f;
+                    var cols = Physics.OverlapSphere(w, 0.1f, ~0, QueryTriggerInteraction.Ignore);
+                    var phys = new System.Text.StringBuilder();
+                    foreach (var col in cols)
+                        phys.Append($"[{col.name} tag={col.tag} n={col.GetComponents<Collider>().Length} yaw={col.transform.eulerAngles.y:0}] ");
+                    sb.Append($"\n cell({x},{y}) {t} dict={dict} | phys={phys}");
+                }
             Debug.Log(sb.ToString());
         }
         IEnumerator ReplayPipeline(List<Move> cert)
@@ -340,7 +370,7 @@ namespace LightPCG.Systems
                     yield return null;
                 }
                 agentCell = step;
-                WalkCells++;
+                if (countWalk) WalkCells++;
             }
             if (cc != null) cc.enabled = true;
         }
@@ -412,6 +442,7 @@ namespace LightPCG.Systems
         {
             Vector2Int door = FindTile(TileType.Door);
             if (door == -Vector2Int.one) yield break;
+            countWalk = false;
             // the door is open: treat its cell as walkable for the exit only
             grid.SetTile(door.x, door.y, TileType.Empty);
             var pieces = Observe().Pieces;
@@ -425,6 +456,7 @@ namespace LightPCG.Systems
                 yield return null;
             }
             grid.SetTile(door.x, door.y, TileType.Door);
+            countWalk = true;
         }
 
         Vector2Int FindTile(TileType t)
