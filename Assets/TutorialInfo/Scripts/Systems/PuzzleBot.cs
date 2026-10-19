@@ -75,8 +75,14 @@ namespace LightPCG.Systems
         {
             cc = GetComponent<CharacterController>();
             int agentLayer = LayerMask.NameToLayer("Agent");
-            if (agentLayer >= 0) gameObject.layer = agentLayer;
+            if (agentLayer >= 0) SetLayerRecursive(transform,agentLayer);
             else Debug.LogWarning("[Bot] Layer 'Agent' not found — the bot's collider can block the laser.");
+        }
+
+        static void SetLayerRecursive(Transform t, int layer)
+        {
+            t.gameObject.layer = layer;
+            foreach (Transform child in t) SetLayerRecursive(child, layer);
         }
 
         void Start()
