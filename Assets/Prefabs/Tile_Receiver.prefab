@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 1015490907652856807}
   - component: {fileID: 2982388025267953668}
   - component: {fileID: 4584995808878530517}
+  - component: {fileID: -9035485462851590591}
   m_Layer: 6
   m_Name: Tile_Receiver
   m_TagString: Receiver
@@ -108,3 +109,16 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &-9035485462851590591
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2628894850650518270}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4d2199ece6bd48b409a04211c70241c5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  sustainTime: 0.3

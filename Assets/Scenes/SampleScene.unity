@@ -764,7 +764,7 @@ MonoBehaviour:
   gridVisualizer: {fileID: 0}
   solverBot: {fileID: 0}
   outputFolder: PCG_Output
-  csvFileName: PCG_Results.csv
+  csvFileName: PCG_Results50.csv
   exportLayouts: 1
   exitDoorWait: 2
   targetFrameRate: 60
