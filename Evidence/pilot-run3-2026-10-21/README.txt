@@ -3,7 +3,7 @@ EVIDENCE: Replay pilot, run 3 (development run, superseded by run 4)
 Date run:      2026-10-21
 Code version:  MIDM-v3-Carry1-2026-10-21
 Git tag:       pilot-run3-2026-10-21
-Commit hash:   <ใส่หลังสร้าง tag>
+Commit hash:   fe40f19
 
 Configuration
   Mode: Replay (Certificate Replay Mode ON), Total Runs 50, Design Stride 3
@@ -38,3 +38,6 @@ Files
   PCG_Pilot50_Replay.csv, run_info.txt, pilot_scale_check.csv, pilot_rq1.csv,
   analysis_output.txt, hud_final.png, README.txt
 Superseded by run 4 (generator fix for exit access). Kept to show that the ExitDoor change and the HUD did not change any recorded data.
+Note: the tag pilot-run3-2026-10-21 points to the code (fe40f19).
+The CSV and the other data files were added in the next commit (6813257).
+No code changed between the two commits.
