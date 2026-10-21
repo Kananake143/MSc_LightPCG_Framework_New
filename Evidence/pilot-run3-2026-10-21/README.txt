@@ -1,4 +1,4 @@
-EVIDENCE: Replay pilot, run 3 (PILOT GATE, final code, used in thesis)
+EVIDENCE: Replay pilot, run 3 (development run, superseded by run 4)
 
 Date run:      2026-10-21
 Code version:  MIDM-v3-Carry1-2026-10-21
@@ -37,3 +37,4 @@ Known notes
 Files
   PCG_Pilot50_Replay.csv, run_info.txt, pilot_scale_check.csv, pilot_rq1.csv,
   analysis_output.txt, hud_final.png, README.txt
+Superseded by run 4 (generator fix for exit access). Kept to show that the ExitDoor change and the HUD did not change any recorded data.
