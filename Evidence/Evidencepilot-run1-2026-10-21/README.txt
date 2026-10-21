@@ -7,3 +7,5 @@ Result: 50/50 solved (95% CI 92.9-100)
 Status: SUPERSEDED. A duplicate BatchRunner (on _GridManager, Run On Start ON)
 was found in the scene afterwards, so this run could not be verified as
 uncontaminated. Kept for comparison with the rerun.
+Verified identical to run 2 in all non-timing columns, so run 1 is not
+contaminated by the duplicate BatchRunner. Run 2 is the one cited in the thesis.

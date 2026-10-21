@@ -505,7 +505,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1581782428}
   - component: {fileID: 1581782427}
-  - component: {fileID: 1581782429}
   m_Layer: 0
   m_Name: _GridManager
   m_TagString: Untagged
@@ -572,35 +571,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1581782429
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1581782426}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6dda6ad5de5e7be45b99d5f8f79e549a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  totalRuns: 1000
-  runOnStart: 1
-  codeVersion: MID-M v1
-  startSteps: 3
-  maxSteps: 9
-  decoyLevels: 0000000001000000020000000300000004000000
-  kRelLevels: 00000000010000000200000003000000
-  designStride: 1
-  baseSeed: 20261016
-  certificateReplayMode: 0
-  gridVisualizer: {fileID: 1581782427}
-  solverBot: {fileID: 1901820501}
-  outputFolder: PCG_Output
-  csvFileName: PCG_Results.csv
-  exportLayouts: 1
-  exitDoorWait: 2
-  targetFrameRate: 60
 --- !u!1 &1901820493
 GameObject:
   m_ObjectHideFlags: 0
@@ -763,8 +733,8 @@ MonoBehaviour:
   certificateReplayMode: 1
   gridVisualizer: {fileID: 1581782427}
   solverBot: {fileID: 1901820501}
-  outputFolder: PCG_Output_run10_check
-  csvFileName: Run10Check.csv
+  outputFolder: PCG_Output_pilot50_v2
+  csvFileName: PCG_Pilot50_Replay.csv
   exportLayouts: 1
   exitDoorWait: 5
   targetFrameRate: 60
