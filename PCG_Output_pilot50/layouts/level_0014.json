@@ -1,0 +1,13 @@
+{
+  "run": 14, "seed": 20261030, "width": 16, "height": 16,
+  "emitter": [1,4], "emitDir": [1,0],
+  "receiver": [1,11],
+  "walls": [[0,0],[0,1],[0,2],[0,3],[0,4],[0,5],[0,6],[0,7],[0,8],[0,10],[0,11],[0,12],[0,13],[0,14],[0,15],[1,0],[1,15],[2,0],[2,15],[3,0],[3,15],[4,0],[4,15],[5,0],[5,15],[6,0],[6,15],[7,0],[7,13],[7,15],[8,0],[8,15],[9,0],[9,15],[10,0],[10,7],[10,15],[11,0],[11,3],[11,15],[12,0],[12,11],[12,15],[13,0],[13,2],[13,15],[14,0],[14,15],[15,0],[15,1],[15,2],[15,3],[15,4],[15,5],[15,6],[15,7],[15,8],[15,9],[15,10],[15,11],[15,12],[15,13],[15,14],[15,15]],
+  "doors": [[0,9]],
+  "movementRule": "Carry1",
+  "solved": [{"id":0,"type":"Mirror","cell":[7,4],"rot":45,"decoy":false},{"id":1,"type":"Mirror","cell":[7,9],"rot":135,"decoy":false},{"id":2,"type":"Mirror","cell":[2,9],"rot":135,"decoy":false},{"id":3,"type":"Mirror","cell":[2,13],"rot":45,"decoy":false},{"id":4,"type":"Mirror","cell":[4,13],"rot":135,"decoy":false},{"id":5,"type":"Mirror","cell":[4,11],"rot":45,"decoy":false}],
+  "initial": [{"id":0,"type":"Mirror","cell":[7,4],"rot":315,"decoy":false},{"id":1,"type":"Mirror","cell":[7,9],"rot":135,"decoy":false},{"id":2,"type":"Mirror","cell":[2,9],"rot":225,"decoy":false},{"id":3,"type":"Mirror","cell":[1,13],"rot":45,"decoy":false},{"id":4,"type":"Mirror","cell":[4,13],"rot":135,"decoy":false},{"id":5,"type":"Mirror","cell":[4,11],"rot":45,"decoy":false}],
+  "certificate": [{"id":3,"from":[1,13],"to":[2,13],"rot":45},{"id":0,"from":[7,4],"to":[7,4],"rot":45},{"id":2,"from":[2,9],"to":[2,9],"rot":135}],
+  "certificateValid": true,
+  "certificateReachable": true
+}

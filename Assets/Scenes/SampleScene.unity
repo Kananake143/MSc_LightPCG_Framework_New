@@ -591,15 +591,15 @@ MonoBehaviour:
   maxSteps: 9
   decoyLevels: 0000000001000000020000000300000004000000
   kRelLevels: 00000000010000000200000003000000
-  designStride: 1
+  designStride: 3
   baseSeed: 20261016
-  certificateReplayMode: 0
-  gridVisualizer: {fileID: 0}
-  solverBot: {fileID: 0}
+  certificateReplayMode: 1
+  gridVisualizer: {fileID: 1581782427}
+  solverBot: {fileID: 1901820501}
   outputFolder: PCG_Output
   csvFileName: PCG_Results.csv
   exportLayouts: 1
-  exitDoorWait: 2
+  exitDoorWait: 5
   targetFrameRate: 60
 --- !u!1 &1901820493
 GameObject:
@@ -758,15 +758,15 @@ MonoBehaviour:
   maxSteps: 9
   decoyLevels: 0000000001000000020000000300000004000000
   kRelLevels: 00000000010000000200000003000000
-  designStride: 1
+  designStride: 3
   baseSeed: 20261016
-  certificateReplayMode: 0
-  gridVisualizer: {fileID: 0}
-  solverBot: {fileID: 0}
-  outputFolder: PCG_Output_diag
-  csvFileName: PCG_Results50_19_10_2026.csv
+  certificateReplayMode: 1
+  gridVisualizer: {fileID: 1581782427}
+  solverBot: {fileID: 1901820501}
+  outputFolder: PCG_Output_pilot50
+  csvFileName: PCG_Pilot50_Replay.csv
   exportLayouts: 1
-  exitDoorWait: 2
+  exitDoorWait: 5
   targetFrameRate: 60
 --- !u!114 &1901820501
 MonoBehaviour:

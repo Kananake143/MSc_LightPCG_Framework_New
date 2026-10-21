@@ -230,7 +230,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   maxLaserDistance: 50
-  maxBounces: 5
+  maxBounces: 24
   obstacleLayer:
     serializedVersion: 2
     m_Bits: 119
