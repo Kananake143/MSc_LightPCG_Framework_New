@@ -3,7 +3,7 @@ EVIDENCE: Replay pilot, run 2 (PILOT GATE, used in thesis)
 Date run:        2026-10-21
 Code version:    MIDM-v3-Carry1-2026-10-19
 Git tag:         pilot-run2-2026-10-21
-Commit hash:     <ใส่เลข 7 ตัวหลัง commit>
+Commit hash:     dbd8e6c
 
 Configuration
   Mode:                      Replay (Certificate Replay Mode ON)
