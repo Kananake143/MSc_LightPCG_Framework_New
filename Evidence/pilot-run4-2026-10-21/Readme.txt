@@ -3,7 +3,7 @@ EVIDENCE: Replay pilot, run 4 (development run, generator fix; superseded by run
 Date run:      2026-10-21
 Code version:  MIDM-v3-Carry1-2026-10-21b
 Git tag:       pilot-run4-2026-10-21
-Commit hash:   <ใส่หลังสร้าง tag>
+Commit hash:   <5db0a8d>
 
 Configuration
   Mode: Replay (Certificate Replay Mode ON), Total Runs 50, Design Stride 3
