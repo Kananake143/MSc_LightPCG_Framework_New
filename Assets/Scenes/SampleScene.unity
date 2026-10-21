@@ -753,7 +753,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   totalRuns: 50
   runOnStart: 1
-  codeVersion: MID-M v1
+  codeVersion: MIDM-v3-Carry1-2026-10-19
   startSteps: 3
   maxSteps: 9
   decoyLevels: 0000000001000000020000000300000004000000

@@ -185,7 +185,7 @@ def main():
 
     raw = pd.read_csv(a.csv, keep_default_na=False, na_values=[""])
 
-      if a.pilot:
+    if a.pilot:
         sc = scale_check(df); print(sc); sc.to_csv(f"{a.out}/pilot_scale_check.csv")
         modes = df["Mode"].astype(str).str.lower().unique().tolist() if "Mode" in df else []
         cvs = df["CodeVersion"].unique().tolist() if "CodeVersion" in df else []
