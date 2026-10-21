@@ -723,7 +723,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   totalRuns: 50
   runOnStart: 1
-  codeVersion: MIDM-v3-Carry1-2026-10-21
+  codeVersion: MIDM-v3-Carry1-2026-10-21b
   startSteps: 3
   maxSteps: 9
   decoyLevels: 0000000001000000020000000300000004000000
@@ -733,7 +733,7 @@ MonoBehaviour:
   certificateReplayMode: 1
   gridVisualizer: {fileID: 1581782427}
   solverBot: {fileID: 1901820501}
-  outputFolder: PCG_Output_pilot50_v3
+  outputFolder: PCG_Output_pilot50_v4
   csvFileName: PCG_Pilot50_Replay.csv
   exportLayouts: 1
   exitDoorWait: 5
