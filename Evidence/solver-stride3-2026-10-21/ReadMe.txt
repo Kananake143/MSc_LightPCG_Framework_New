@@ -62,3 +62,18 @@ Files
 
 Reproduce the analysis (from the Analysis folder):
   py analyse_midm.py ..\Evidence\solver-stride3-2026-10-21\PCG_Solver50_stride3.csv --out ..\results\solver_stride3 --pilot
+## Exit blocked (Run 14)
+
+1 of 50 runs shows FailReason "no walking path to (x; y)" with Solved = true.
+Observed in the scene: the bot placed a mirror to adjust the beam direction, and after
+the door opened that mirror stood on the cell in front of the door, so the bot
+could not walk to the exit.
+
+- Solved, SolveTimeMs and WalkCells are unaffected, because Finish() records them
+  before ExitDoor runs.
+- The same level exits normally in Replay mode (the certificate does not place
+  a piece there), so this comes from the solver's own final arrangement, not
+  from the generator.
+- The bot is not changed before the evaluation run: forbidding that cell would
+  change the search space and therefore SearchNodes.
+- The rate is reported from the "Exit blocked" counter in the evaluation run.
