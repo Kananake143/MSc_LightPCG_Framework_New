@@ -730,11 +730,11 @@ MonoBehaviour:
   kRelLevels: 00000000010000000200000003000000
   designStride: 3
   baseSeed: 20261016
-  certificateReplayMode: 1
+  certificateReplayMode: 0
   gridVisualizer: {fileID: 1581782427}
   solverBot: {fileID: 1901820501}
-  outputFolder: PCG_Output_pilot50_v5
-  csvFileName: PCG_Pilot50_Replay.csv
+  outputFolder: PCG_Output_solver_stride3
+  csvFileName: PCG_Solver50_stride3.csv
   exportLayouts: 1
   exitDoorWait: 5
   targetFrameRate: 60
