@@ -1,0 +1,9 @@
+measure,k,n,percent,ci95_low,ci95_high
+Valid instance generated,140,140,100.0,97.33,100.0
+Certificate valid (logical replay),140,140,100.0,97.33,100.0
+Certificate reachable on foot,140,140,100.0,97.33,100.0
+Solved (laser reaches receiver),140,140,100.0,97.33,100.0
+Laser hit at finish,140,140,100.0,97.33,100.0
+Door opened (sustained hit),140,140,100.0,97.33,100.0
+Unresolved although certificate valid,0,140,0.0,0.0,2.67
+At least one walking teleport,0,140,0.0,0.0,2.67
