@@ -721,7 +721,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6dda6ad5de5e7be45b99d5f8f79e549a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  totalRuns: 50
+  totalRuns: 10
   runOnStart: 1
   codeVersion: MIDM-v3-Carry1-2026-10-19
   startSteps: 3
@@ -733,8 +733,8 @@ MonoBehaviour:
   certificateReplayMode: 1
   gridVisualizer: {fileID: 1581782427}
   solverBot: {fileID: 1901820501}
-  outputFolder: PCG_Output_pilot50_v2
-  csvFileName: PCG_Pilot50_Replay.csv
+  outputFolder: PCG_Output_run10_check
+  csvFileName: Run10Check.csv
   exportLayouts: 1
   exitDoorWait: 5
   targetFrameRate: 60
