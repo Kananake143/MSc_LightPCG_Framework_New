@@ -1,0 +1,14 @@
+codeVersion=MIDM-v3-Carry1-2026-10-21b
+unity=6000.0.76f1
+baseSeed=20261016
+totalRuns=50
+mode=replay
+solver=PuzzleBot movementRule=Carry1 nodeLimit=100000 depth=12 timeLimitMs=8000 w=2
+targetFrameRate=60
+device=Inspiron 15 7000 Gaming (Dell Inc.)
+cpu=Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz
+designStride=3
+steps=3..9
+decoys=0/1/2/3/4
+kRel=0/1/2/3
+midWeights=static 1/3 each; mobility 1/4 each; alpha=0.5
