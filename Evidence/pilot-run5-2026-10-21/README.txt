@@ -46,9 +46,8 @@ Notes
 Files
   PCG_Pilot50_Replay.csv, run_info.txt, pilot_scale_check.csv, pilot_rq1.csv,
   analysis_output.txt, hud_run5.png, README.txt
-Note: run_info.txt of this run does not list maxGenerationAttempts (the line was added to
-BatchRunner afterwards). The value 200 was set in the GridVisualizer Inspector for this run;
-Run 10 reached attempt 66 in the CSV, which is above the previous cap of 50.
+Note: the BatchRunner change that writes maxGenerationAttempts to run_info.txt
+(metadata only) was committed after the tag (commit <hash>). It does not affect any CSV column.
 
 Reproduce the analysis (from the Analysis folder):
   py analyse_midm.py ..\Evidence\pilot-run5-2026-10-21\PCG_Pilot50_Replay.csv --out ..\results\pilot --pilot
