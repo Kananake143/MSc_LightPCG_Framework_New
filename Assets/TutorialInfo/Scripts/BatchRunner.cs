@@ -245,7 +245,7 @@ namespace LightPCG.Research
                 $"nodeLimit={(solverBot != null ? solverBot.maxExpandedNodes : 0)} depth={(solverBot != null ? solverBot.maxPlanDepth : 0)} " +
                 $"timeLimitMs={(solverBot != null ? solverBot.searchTimeLimitMs : 0)} w={(solverBot != null ? solverBot.heuristicWeight : 0)}\n" +
                 $"targetFrameRate={targetFrameRate}\ndevice={SystemInfo.deviceModel}\ncpu={SystemInfo.processorType}\n" +
-                $"designStride={designStride}\nsteps={startSteps}..{maxSteps}\ndecoys={string.Join("/", decoyLevels)}\nkRel={string.Join("/", kRelLevels)}\n" +
+                $"designStride={designStride}\nmaxGenerationAttempts={(gridVisualizer != null ? gridVisualizer.maxGenerationAttempts : 0)}\nsteps={startSteps}..{maxSteps}\ndecoys={string.Join("/", decoyLevels)}\nkRel={string.Join("/", kRelLevels)}\n" +
                 $"midWeights=static 1/3 each; mobility 1/4 each; alpha={MidCalculator.ALPHA}\n");
         }
     }
