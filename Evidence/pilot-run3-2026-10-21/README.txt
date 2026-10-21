@@ -41,3 +41,4 @@ Superseded by run 4 (generator fix for exit access). Kept to show that the ExitD
 Note: the tag pilot-run3-2026-10-21 points to the code (fe40f19).
 The CSV and the other data files were added in the next commit (6813257).
 No code changed between the two commits.
+pilot_rq1.csv and pilot_scale_check.csv were added in the next commit (6949a42).
