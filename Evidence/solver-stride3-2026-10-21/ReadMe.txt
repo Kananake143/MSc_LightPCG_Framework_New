@@ -3,7 +3,7 @@ EVIDENCE: Solver pilot, stride 3 (DEVELOPMENT RUN, not evaluation data)
 Date run:      2026-10-21
 Code version:  MIDM-v3-Carry1-2026-10-21c
 Related tag:   pilot-run5-2026-10-21 (same code; later commits only add metadata to run_info.txt)
-Commit hash:   <ใส่ hash ของ commit ที่เพิ่มโฟลเดอร์นี้>
+Commit hash:   <2c3b87c>
 
 Purpose
   Check what the solver bot (PuzzleBot, A*) does on levels with kRel 0-3 before the
