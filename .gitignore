@@ -73,3 +73,7 @@ crashlytics-build.properties
 # Temporary auto-generated Android Assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# Experiment outputs (raw runs); keep curated copies in /Evidence
+/PCG_Output*/
+/results/
