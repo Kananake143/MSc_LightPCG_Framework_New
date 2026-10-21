@@ -721,9 +721,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6dda6ad5de5e7be45b99d5f8f79e549a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  totalRuns: 10
+  totalRuns: 50
   runOnStart: 1
-  codeVersion: MIDM-v3-Carry1-2026-10-19
+  codeVersion: MIDM-v3-Carry1-2026-10-21
   startSteps: 3
   maxSteps: 9
   decoyLevels: 0000000001000000020000000300000004000000
@@ -733,11 +733,12 @@ MonoBehaviour:
   certificateReplayMode: 1
   gridVisualizer: {fileID: 1581782427}
   solverBot: {fileID: 1901820501}
-  outputFolder: PCG_Output_run10_check
-  csvFileName: Run10Check.csv
+  outputFolder: PCG_Output_pilot50_v3
+  csvFileName: PCG_Pilot50_Replay.csv
   exportLayouts: 1
   exitDoorWait: 5
   targetFrameRate: 60
+  showHud: 1
 --- !u!114 &1901820501
 MonoBehaviour:
   m_ObjectHideFlags: 0
