@@ -3,7 +3,7 @@ EVIDENCE: Replay pilot, run 5 (PILOT GATE, final code and settings, used in thes
 Date run:      2026-10-21
 Code version:  MIDM-v3-Carry1-2026-10-21c
 Git tag:       pilot-run5-2026-10-21
-Commit hash:   <ใส่หลังสร้าง tag>
+Commit hash:   <b111a44>
 
 Configuration
   Mode: Replay (Certificate Replay Mode ON), Total Runs 50, Design Stride 3
