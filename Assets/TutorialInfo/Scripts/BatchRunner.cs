@@ -62,6 +62,10 @@ namespace LightPCG.Research
 
         private readonly List<string> rows = new List<string>();
         private int validRuns, solvedRuns;
+        private int currentRun, failedRuns, invalidRuns, exitBlockedRuns;
+        [Header("HUD")]
+        public bool showHud = true;
+        private GUIStyle hudStyle;
         private string OutDir => Path.GetFullPath(Path.Combine(Application.dataPath, "..", outputFolder));
 
         static readonly string Header =
@@ -111,11 +115,14 @@ namespace LightPCG.Research
             Debug.Log($"[Batch] {totalRuns} runs | {cells} design cells | mode=" +
                       (certificateReplayMode ? "certificate replay" : "solver"));
             rows.Clear(); validRuns = solvedRuns = 0;
+            currentRun = failedRuns = invalidRuns = exitBlockedRuns = 0;
             int nObjMax = (maxSteps - 1) + decoyLevels.Max();   // check against generator: Nsol <= Steps - 1
 
             for (int i = 0; i < totalRuns; i++)
             {
                 int run = i + 1;
+                currentRun = run;
+
                 int seed = baseSeed + run;
                 var d = GetDifficultyForRun(i);
                 gridVisualizer.minSteps = d.steps;
@@ -132,6 +139,7 @@ namespace LightPCG.Research
 
                 if (!gridVisualizer.LastLevelValid)
                 {
+                    invalidRuns++;
                     rows.Add(Row(run, seed, d.steps, d.kRel, nObjMax, gMs, false));
                     continue;
                 }
@@ -145,7 +153,9 @@ namespace LightPCG.Research
 
                 yield return new WaitForSeconds(exitDoorWait);
 
-                if (solverBot.WasSolved) solvedRuns++;
+                if (solverBot.WasSolved) solvedRuns++; else failedRuns++;
+                if (solverBot.WasSolved && (solverBot.FailReason ?? "").StartsWith("no walking path"))
+                    exitBlockedRuns++;
                 rows.Add(Row(run, seed, d.steps, d.kRel, nObjMax, gMs, true));
 
                 if (exportLayouts)
@@ -164,6 +174,21 @@ namespace LightPCG.Research
             Debug.Log($"[Batch] COMPLETE valid={validRuns}/{totalRuns} solved={solvedRuns} -> {OutDir}");
         }
 
+        void OnGUI()
+        {
+            if (!showHud || totalRuns <= 0) return;
+            if (hudStyle == null)
+            {
+                hudStyle = new GUIStyle(GUI.skin.label) { fontSize = 22, fontStyle = FontStyle.Bold };
+                hudStyle.normal.textColor = Color.white;
+            }
+            string text = $"Level {currentRun} / {totalRuns}\nSolved: {solvedRuns}\nFailed: {failedRuns}";
+            int lines = 3;
+            if (invalidRuns > 0) { text += $"\nInvalid: {invalidRuns}"; lines++; }
+            if (exitBlockedRuns > 0) { text += $"\nExit blocked: {exitBlockedRuns}"; lines++; }
+            GUI.Box(new Rect(10, 10, 290, 16 + 30 * lines), GUIContent.none);
+            GUI.Label(new Rect(20, 16, 280, 30 * lines), text, hudStyle);
+        }
         string Row(int run, int seed, int steps, int kRel, int nObjMax, float gMs, bool valid)
         {
             var g = gridVisualizer; var a = solverBot; var ci = CultureInfo.InvariantCulture;

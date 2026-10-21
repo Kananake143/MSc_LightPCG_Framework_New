@@ -447,6 +447,16 @@ namespace LightPCG.Systems
             grid.SetTile(door.x, door.y, TileType.Empty);
             var pieces = Observe().Pieces;
             yield return WalkTo(door, pieces);
+            
+            if (!lastWalkOk)
+            {
+                // the cell in front of the door is blocked (e.g. by the emitter):
+                // do not cross walls. FailReason was already set by WalkTo.
+                grid.SetTile(door.x, door.y, TileType.Door);
+                countWalk = true;
+                yield break;
+            }
+            
             Vector2Int outward = door.x == 0 ? Vector2Int.left : door.x == grid.Width - 1 ? Vector2Int.right
                                : door.y == 0 ? Vector2Int.down : Vector2Int.up;
             Vector3 beyond = gridVisualizer.GridToWorld(door.x + outward.x, door.y + outward.y); beyond.y = transform.position.y;
