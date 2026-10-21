@@ -32,7 +32,7 @@ namespace LightPCG.Core
         private int W, H;
         private HashSet<Vector2Int> solutionCells = new HashSet<Vector2Int>();
         private HashSet<Vector2Int> pillarCells = new HashSet<Vector2Int>();
-
+        private Vector2Int doorInner = -Vector2Int.one;   // the only cell that gives access to the door
         // ── Existing public properties ────────────────────────────────
         public int SolutionObjectCount { get; private set; }
         public int DecoyCount { get; private set; }
@@ -112,6 +112,7 @@ namespace LightPCG.Core
             // 2. Door + Receiver
             Vector2Int door = RandomSafeWallCell();
             grid.SetTile(door.x, door.y, TileType.Door);
+            doorInner = door + InwardDirFromWall(door);
             Vector2Int recv = ReceiverNearDoor(door);
             grid.SetTile(recv.x, recv.y, TileType.Receiver);
             solutionCells.Add(recv);
@@ -119,6 +120,7 @@ namespace LightPCG.Core
 
             // 3. Main chain (receiver -> emitter), then expose it emitter -> receiver
             buildingMainChain = true;
+            if (recv == doorInner) FailChain("receiver placed in front of the door (exit blocked)");
             BuildChain(recv, Mathf.Max(steps, 2));
             buildingMainChain = false;
             OrderedSolutionBends = Enumerable.Reverse(chainBends).ToList();
@@ -331,6 +333,7 @@ namespace LightPCG.Core
             EmitterCell = c;
             EmitterBeamDir = -buildDir;
             if (!onPath) FailChain("emitter placed at a fallback cell off the chain");
+            if (c == doorInner) FailChain("emitter placed in front of the door (exit blocked)");
         }
 
         void PlaceEmitterAgainstWall(int cx, int cy, Vector2Int dir)
