@@ -1,0 +1,49 @@
+subset,outcome,model,n,R2,adjR2,AIC,dR2,F_change,p_change
+all,SearchNodes,M1 baseline,980,0.0098,0.0077,1902.9446,,,
+all,SearchNodes,M2 + static,980,0.0439,0.04,1872.5817,0.0341,17.397,0.0
+all,SearchNodes,M3 + mobility,980,0.1433,0.1363,1772.9638,0.0994,28.1762,0.0
+all,SearchNodes,M1 + MIDstatic,980,0.0429,0.0399,1871.6348,,,
+all,SearchNodes,M1 + MIDM,980,0.0612,0.0583,1852.6327,,,
+all,SearchNodes,M1 + MIDlegacy,980,0.041,0.0381,1873.4853,,,
+all,SearchNodes,M1 + CertificateLength,980,0.0792,0.0763,1833.7479,,,
+all,SearchNodes,M1 + CertificateLength + MIDM,980,0.0995,0.0959,1813.8007,0.0204,22.0815,0.0
+all,SearchGenerated,M1 baseline,980,0.0512,0.0492,3022.8952,,,
+all,SearchGenerated,M2 + static,980,0.0882,0.0845,2987.8703,0.037,19.8046,0.0
+all,SearchGenerated,M3 + mobility,980,0.1698,0.163,2903.9531,0.0816,23.8702,0.0
+all,SearchGenerated,M1 + MIDstatic,980,0.0842,0.0814,2990.1501,,,
+all,SearchGenerated,M1 + MIDM,980,0.115,0.1123,2956.676,,,
+all,SearchGenerated,M1 + MIDlegacy,980,0.0811,0.0783,2993.4593,,,
+all,SearchGenerated,M1 + CertificateLength,980,0.1019,0.0991,2971.054,,,
+all,SearchGenerated,M1 + CertificateLength + MIDM,980,0.136,0.1325,2935.0699,0.0341,38.5323,0.0
+all,PlanLength,M1 baseline,980,0.007,0.0049,354.388,,,
+all,PlanLength,M2 + static,980,0.0222,0.0182,343.2708,0.0152,7.5784,0.0005
+all,PlanLength,M3 + mobility,980,0.2504,0.2442,90.7777,0.2282,73.914,0.0
+all,PlanLength,M1 + MIDstatic,980,0.0195,0.0165,343.8925,,,
+all,PlanLength,M1 + MIDM,980,0.0335,0.0305,329.8506,,,
+all,PlanLength,M1 + MIDlegacy,980,0.0181,0.015,345.3737,,,
+all,PlanLength,M1 + CertificateLength,980,0.1227,0.12,234.9459,,,
+all,PlanLength,M1 + CertificateLength + MIDM,980,0.1248,0.1212,234.6534,0.002,2.2835,0.1311
+solved,SearchNodes,M1 baseline,980,0.0098,0.0077,1902.9446,,,
+solved,SearchNodes,M2 + static,980,0.0439,0.04,1872.5817,0.0341,17.397,0.0
+solved,SearchNodes,M3 + mobility,980,0.1433,0.1363,1772.9638,0.0994,28.1762,0.0
+solved,SearchNodes,M1 + MIDstatic,980,0.0429,0.0399,1871.6348,,,
+solved,SearchNodes,M1 + MIDM,980,0.0612,0.0583,1852.6327,,,
+solved,SearchNodes,M1 + MIDlegacy,980,0.041,0.0381,1873.4853,,,
+solved,SearchNodes,M1 + CertificateLength,980,0.0792,0.0763,1833.7479,,,
+solved,SearchNodes,M1 + CertificateLength + MIDM,980,0.0995,0.0959,1813.8007,0.0204,22.0815,0.0
+solved,SearchGenerated,M1 baseline,980,0.0512,0.0492,3022.8952,,,
+solved,SearchGenerated,M2 + static,980,0.0882,0.0845,2987.8703,0.037,19.8046,0.0
+solved,SearchGenerated,M3 + mobility,980,0.1698,0.163,2903.9531,0.0816,23.8702,0.0
+solved,SearchGenerated,M1 + MIDstatic,980,0.0842,0.0814,2990.1501,,,
+solved,SearchGenerated,M1 + MIDM,980,0.115,0.1123,2956.676,,,
+solved,SearchGenerated,M1 + MIDlegacy,980,0.0811,0.0783,2993.4593,,,
+solved,SearchGenerated,M1 + CertificateLength,980,0.1019,0.0991,2971.054,,,
+solved,SearchGenerated,M1 + CertificateLength + MIDM,980,0.136,0.1325,2935.0699,0.0341,38.5323,0.0
+solved,PlanLength,M1 baseline,980,0.007,0.0049,354.388,,,
+solved,PlanLength,M2 + static,980,0.0222,0.0182,343.2708,0.0152,7.5784,0.0005
+solved,PlanLength,M3 + mobility,980,0.2504,0.2442,90.7777,0.2282,73.914,0.0
+solved,PlanLength,M1 + MIDstatic,980,0.0195,0.0165,343.8925,,,
+solved,PlanLength,M1 + MIDM,980,0.0335,0.0305,329.8506,,,
+solved,PlanLength,M1 + MIDlegacy,980,0.0181,0.015,345.3737,,,
+solved,PlanLength,M1 + CertificateLength,980,0.1227,0.12,234.9459,,,
+solved,PlanLength,M1 + CertificateLength + MIDM,980,0.1248,0.1212,234.6534,0.002,2.2835,0.1311

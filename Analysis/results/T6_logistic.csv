@@ -1,0 +1,4 @@
+subset,target,model,n,McFaddenR2,AIC,LR,df,p_LR
+all,SearchNodes>1,L1 baseline,980,0.0005,1197.5128,,,
+all,SearchNodes>1,L2 + static,980,0.0038,1197.6067,3.9061,2.0,0.1418
+all,SearchNodes>1,L3 + mobility,980,0.1984,973.6151,231.9916,4.0,0.0

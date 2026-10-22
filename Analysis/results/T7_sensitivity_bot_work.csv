@@ -1,0 +1,17 @@
+subset,outcome,model,n,R2,adjR2,AIC,dR2,F_change,p_change
+solved,SolveTimeMs,M1 baseline,980,0.0032,0.0012,1040.6328,,,
+solved,SolveTimeMs,M2 + static,980,0.008,0.0039,1039.8874,0.0048,2.3663,0.0944
+solved,SolveTimeMs,M3 + mobility,980,0.0778,0.0702,976.4233,0.0698,18.3634,0.0
+solved,SolveTimeMs,M1 + MIDstatic,980,0.006,0.003,1039.8477,,,
+solved,SolveTimeMs,M1 + MIDM,980,0.0114,0.0084,1034.5293,,,
+solved,SolveTimeMs,M1 + MIDlegacy,980,0.0055,0.0024,1040.4073,,,
+solved,SolveTimeMs,M1 + CertificateLength,980,0.0407,0.0377,1005.0921,,,
+solved,SolveTimeMs,M1 + CertificateLength + MIDM,980,0.0412,0.0373,1006.5254,0.0006,0.5639,0.4529
+solved,WalkCells,M1 baseline,980,0.0024,0.0003,1340.9968,,,
+solved,WalkCells,M2 + static,980,0.0044,0.0003,1342.9986,0.002,0.995,0.3701
+solved,WalkCells,M3 + mobility,980,0.0545,0.0467,1300.4521,0.05,12.8491,0.0
+solved,WalkCells,M1 + MIDstatic,980,0.003,-0.0001,1342.4143,,,
+solved,WalkCells,M1 + MIDM,980,0.0062,0.0032,1339.21,,,
+solved,WalkCells,M1 + MIDlegacy,980,0.0028,-0.0003,1342.6156,,,
+solved,WalkCells,M1 + CertificateLength,980,0.0272,0.0243,1318.2711,,,
+solved,WalkCells,M1 + CertificateLength + MIDM,980,0.0273,0.0233,1320.2273,0.0,0.0436,0.8347
