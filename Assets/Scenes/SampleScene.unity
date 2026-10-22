@@ -546,7 +546,7 @@ MonoBehaviour:
   LastRefractorCount: 0
   LastRuleTransitions: 0
   kRel: 0
-  seed: 20261016
+  seed: 20262016
   maxGenerationAttempts: 200
   requireReachableCertificate: 1
   LastEmitter: {x: 0, y: 0}
@@ -721,7 +721,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6dda6ad5de5e7be45b99d5f8f79e549a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  totalRuns: 140
+  totalRuns: 5
   runOnStart: 1
   codeVersion: MIDM-v3-Carry1-2026-10-21c
   startSteps: 3
@@ -729,12 +729,12 @@ MonoBehaviour:
   decoyLevels: 0000000001000000020000000300000004000000
   kRelLevels: 00000000010000000200000003000000
   designStride: 1
-  baseSeed: 20261016
-  certificateReplayMode: 1
+  baseSeed: 20262016
+  certificateReplayMode: 0
   gridVisualizer: {fileID: 1581782427}
   solverBot: {fileID: 1901820501}
-  outputFolder: PCG_Output_pilot140_replay
-  csvFileName: PCG_Pilot140_Replay.csv
+  outputFolder: PCG_Output_smoke
+  csvFileName: PCG_Smoke.csv
   exportLayouts: 1
   exitDoorWait: 5
   targetFrameRate: 60
