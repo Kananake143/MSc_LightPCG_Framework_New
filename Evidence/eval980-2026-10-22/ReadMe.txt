@@ -1,7 +1,7 @@
 # eval980-2026-10-22 — Evaluation run (Solver mode)
 
 Status: EVALUATION data (not development data). Generated with the analysis plan
-frozen beforehand (tag analysis-plan-frozen-2026-10-22, commit <hash>).
+frozen beforehand (tag analysis-plan-frozen-2026-10-22, commit <5e1ef27>).
 
 ## Configuration
 - CodeVersion: MIDM-v3-Carry1-2026-10-21c (same code as pilot140 and solver-stride3)
