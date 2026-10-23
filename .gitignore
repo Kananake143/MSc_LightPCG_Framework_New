@@ -77,3 +77,5 @@ crashlytics-build.properties
 # Experiment outputs (raw runs); keep curated copies in /Evidence
 /PCG_Output*/
 /results/
+OfflineTests/**/obj/
+OfflineTests/**/bin/

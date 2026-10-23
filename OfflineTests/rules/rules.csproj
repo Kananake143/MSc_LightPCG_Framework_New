@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Offline test (rules). Compiles the REAL scripts of the repo (no copies); UnityEngine.cs is a minimal stand-in for the Unity API. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <NoWarn>CS0168;CS0219;CS0649;CS0414</NoWarn>
+    <Scripts>$(MSBuildThisFileDirectory)..\..\Assets\TutorialInfo\Scripts\</Scripts>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="..\UnityEngine.cs" />
+    <Compile Include="$(Scripts)Core\*.cs" />
+    <Compile Include="$(Scripts)BackwardChainingGenerator.cs" />
+    <Compile Include="$(Scripts)BotPlanner.cs" />
+  </ItemGroup>
+</Project>
