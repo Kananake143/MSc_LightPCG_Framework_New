@@ -586,8 +586,8 @@ GameObject:
   - component: {fileID: 1901820499}
   - component: {fileID: 1901820500}
   - component: {fileID: 1901820501}
-  - component: {fileID: 1901820503}
   - component: {fileID: 1901820502}
+  - component: {fileID: 1901820503}
   m_Layer: 7
   m_Name: AI_Agent
   m_TagString: Untagged

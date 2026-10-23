@@ -147,7 +147,7 @@ namespace LightPCG.Play
             GUILayout.Label("<b>Goal.</b> Make the laser beam from the <color=#e6c200>emitter</color> (yellow) reach the <color=#e0605a>receiver</color> (red). " +
                             "The <color=#20b050>door</color> (green) then opens: walk into it to finish the level.", label);
             GUILayout.Space(4);
-            GUILayout.Label("<b>Pieces.</b> Mirrors turn the beam by 90 degrees. Prisms (purple) let it pass straight or turn it left or right, depending on their rotation. " +
+            GUILayout.Label("<b>Pieces.</b> Mirrors turn the beam by 90 degrees. Prisms (pink) let it pass straight or turn it left or right, depending on their rotation. Grey blocks are walls. " +
                             "Some pieces are decoys: they are not needed.", label);
             GUILayout.Space(4);
             GUILayout.Label("<b>Controls.</b>\n" +
@@ -183,7 +183,7 @@ namespace LightPCG.Play
             {
                 int kApplied = gridVisualizer.LastScramble != null ? gridVisualizer.LastScramble.KRelApplied : 0;
                 GUILayout.Label($"Seed {gridVisualizer.LastSeed}   |   Steps {gridVisualizer.LastSteps}   |   Decoys {gridVisualizer.LastDecoyCount}   |   Pieces to relocate {kApplied}", small);
-                GUILayout.Label($"Movable pieces: {gridVisualizer.LastTotalObjectCount}  ({gridVisualizer.LastMirrorCount} mirrors, {gridVisualizer.LastRefractorCount} prisms)", small);
+                GUILayout.Label($"Movable pieces: {gridVisualizer.LastTotalObjectCount} = {gridVisualizer.LastMirrorCount + gridVisualizer.LastRefractorCount} in the solution ({gridVisualizer.LastMirrorCount} mirror(s), {gridVisualizer.LastRefractorCount} prism(s)) + {gridVisualizer.LastTotalObjectCount - gridVisualizer.LastMirrorCount - gridVisualizer.LastRefractorCount} decoy(s)", small);
 
                 var m = gridVisualizer.LastMobility;
                 var mid = MidCalculator.Compute(gridVisualizer.LastTotalObjectCount, NObjMax, gridVisualizer.desiredWidth, gridVisualizer.desiredHeight,
