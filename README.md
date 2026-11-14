@@ -19,7 +19,7 @@ Note: the playable demo is a demonstration only. All results in the dissertation
 1. Quick start: play the demo (no Unity needed)
 Download PuzzleDemo_Windows.zip from the Releases page of this repository: [Release link]
 Unzip the whole folder. Do not run the .exe from inside the zip.
-Run [GameName].exe
+Run MSc_LightPCG_Framework.exe
 If Windows SmartScreen warns about an unknown publisher, choose "More info", then "Run anyway". The program is not code-signed.
 
 Tested on: Windows 10
@@ -99,7 +99,6 @@ dev-solver-stride3-2026-10-21: the solver pilot.
 analysis-plan-frozen-2026-10-22: the pre-specified analysis script analyse_midm.py (commit 5e1ef27).
 eval980-2026-10-22: the evaluation run, with PCG_Eval980.csv and the run-information file.
 verification-2026-10-23: the offline implementation checks (commit c968c12). Between the evaluation tag and this one, only new files were added: the demo scripts, the demo scene and the test project.
-[submission-2026-11-19]: the version submitted for marking.
 
 CodeVersion recorded in every row of the results file: MIDM-v3-Carry1-2026-10-21c
 
