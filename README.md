@@ -4,7 +4,7 @@ Exploring Algorithmic Control of Difficulty and Rule Interaction
 
 MSc dissertation project (CMP504), Abertay University. 
 Author: Kananake Yimsirivattana 
-Supervisor: Dr.Jung In Jung and Dr.William Kavanagh
+,Supervisor: Dr.Jung In Jung and Dr.William Kavanagh
 
 This repository contains the Unity project behind the dissertation. It has three parts:
 
