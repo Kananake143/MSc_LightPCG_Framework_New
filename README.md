@@ -16,9 +16,8 @@ The puzzle: make the laser beam from the emitter reach the receiver by rotating 
 
 Note: the playable demo is a demonstration only. All results in the dissertation come from automated bot runs. No human players took part and no human data were collected.
 
-1. Quick start: play the demo (no Unity needed)
-Download PuzzleDemo_Windows.zip from the Releases page of this repository: [Release link]
-Unzip the whole folder. Do not run the .exe from inside the zip.
+1. Quick start: play the demo
+Click playdemo folder
 Run MSc_LightPCG_Framework.exe
 If Windows SmartScreen warns about an unknown publisher, choose "More info", then "Run anyway". The program is not code-signed.
 
