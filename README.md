@@ -1,4 +1,6 @@
-A Procedural Content Generation Framework for Light-Based Puzzles
+A Procedural Content Generation Framework 
+for Light-Based Puzzles: Exploring Algorithmic 
+Control of Difficulty and Rule Interaction 
 
 Exploring Algorithmic Control of Difficulty and Rule Interaction
 
